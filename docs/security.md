@@ -10,7 +10,8 @@ IPv4 and IPv6 payloads should be private by default.
   IPv6.
 - Do not commit real home IPs, provider identifiers, private URLs, internal
   DNS names, device labels, bucket names, or secrets.
-- Keep Meraki source references generic and operator-controlled.
+- Keep Meraki source references generic and operator-controlled. Registry
+  entries may use only `wan1`, `wan2`, or `cellular` for live Meraki uplinks.
 - Keep generated registry JSON and generated tfvars JSON out of Git.
 - Keep Object Storage objects private unless a later, explicit operational
   decision documents a different access model.
@@ -31,6 +32,11 @@ The publisher reads Object Storage upload credentials only from
 `LINODE_OBJ_ACCESS_KEY` and `LINODE_OBJ_SECRET_KEY`. It does not support
 profiles, credential files, committed access keys, or provider-specific secret
 blocks in publisher config.
+
+For live Meraki discovery, keep the organization selector in a private local
+publisher config and grant the API key the narrow read scope needed for uplink
+telemetry. Do not commit Meraki organization IDs, network IDs, serials, device
+names, ISP names, or topology labels, and do not paste them into PR notes.
 
 ## Terraform State
 

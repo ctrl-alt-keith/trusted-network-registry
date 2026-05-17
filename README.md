@@ -11,9 +11,9 @@ affiliates.
 
 - Builds a versioned JSON registry of trusted/admin IPv4 and IPv6 CIDR entries.
 - Validates and canonicalizes static CIDR entries first.
-- Provides bounded Meraki uplink discovery scaffolding that renders IPv4 host
-  addresses as `/32` and IPv6 host addresses as `/128` without publishing raw
-  provider identifiers.
+- Provides bounded read-only Meraki uplink discovery that renders IPv4 public
+  host addresses as `/32` and IPv6 public host addresses as `/128` without
+  publishing raw provider identifiers.
 - Supports one-shot publisher execution for scheduled environments such as
   Synology.
 - Can upload the generated registry payload to S3-compatible Object Storage
@@ -74,6 +74,11 @@ Runtime credentials come only from these environment variables:
 
 Do not put Object Storage credential values, private bucket labels, or
 non-public endpoint URLs in committed files.
+
+The checked-in example uses a sanitized Meraki fixture. For live Meraki
+Dashboard discovery, use a private local config with `meraki.organization_id`
+instead of `meraki.fixture_path`, and provide the API key only through
+`MERAKI_DASHBOARD_API_KEY`.
 
 Validate the example registry:
 

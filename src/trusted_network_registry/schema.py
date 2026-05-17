@@ -135,8 +135,14 @@ def validate_publisher_config(config: dict[str, Any]) -> None:
     meraki = config.get("meraki", {})
     if meraki and not isinstance(meraki, dict):
         raise SchemaError("meraki config must be an object")
-    if meraki.get("enabled", False) and not meraki.get("fixture_path"):
-        raise SchemaError("MVP Meraki discovery requires meraki.fixture_path")
+    if meraki.get("enabled", False):
+        has_fixture = bool(meraki.get("fixture_path"))
+        has_organization = bool(meraki.get("organization_id"))
+        if has_fixture == has_organization:
+            raise SchemaError(
+                "Meraki discovery requires exactly one of "
+                "meraki.fixture_path or meraki.organization_id"
+            )
 
     publish = config.get("publish", {})
     if publish and not isinstance(publish, dict):

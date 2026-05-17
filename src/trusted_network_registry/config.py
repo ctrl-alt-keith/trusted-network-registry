@@ -21,6 +21,7 @@ class StaticEntryConfig:
 @dataclass(frozen=True)
 class MerakiConfig:
     enabled: bool = False
+    organization_id: str | None = None
     fixture_path: str | None = None
 
 
@@ -68,6 +69,7 @@ def publisher_config_from_dict(raw: dict[str, Any]) -> PublisherConfig:
         ],
         meraki=MerakiConfig(
             enabled=bool(meraki.get("enabled", False)),
+            organization_id=meraki.get("organization_id"),
             fixture_path=meraki.get("fixture_path"),
         ),
         publish=PublishConfig(
