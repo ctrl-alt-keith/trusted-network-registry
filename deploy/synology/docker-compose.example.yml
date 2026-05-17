@@ -1,0 +1,15 @@
+services:
+  publisher:
+    image: ghcr.io/example/trusted-network-registry:0.1.0
+    command:
+      - trusted-network-registry
+      - publish
+      - --once
+      - --config
+      - /config/config.toml
+    env_file:
+      - publisher.env
+    volumes:
+      - ./config.toml:/config/config.toml:ro
+      - ./out:/out
+    restart: "no"
