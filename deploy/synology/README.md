@@ -10,6 +10,9 @@ exits.
 - Mount publisher config read-only.
 - Inject secrets through an env file or a Synology-supported secret mechanism.
 - Write registry artifacts to a private output mount.
+- For Object Storage publishing, use `LINODE_OBJ_ACCESS_KEY` and
+  `LINODE_OBJ_SECRET_KEY` in the runtime env file and keep real bucket labels,
+  endpoint URLs, and object keys out of committed files.
 - Do not run a long-lived daemon for the MVP.
 
 ## Compose Example

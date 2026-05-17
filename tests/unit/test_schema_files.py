@@ -12,6 +12,8 @@ from trusted_network_registry.schema import (
     REGISTRY_META_REQUIRED,
     REGISTRY_REQUIRED,
     SOURCE_TYPES,
+    SchemaError,
+    validate_publisher_config,
     validate_registry_document,
 )
 
@@ -60,6 +62,22 @@ class SchemaFileTests(unittest.TestCase):
 
         self.assertEqual(config.registry_name, "trusted-network-registry")
         self.assertEqual(config.ttl_seconds, 3600)
+
+    def test_object_storage_config_requires_minimal_upload_fields(self) -> None:
+        with self.assertRaises(SchemaError):
+            validate_publisher_config({"publish": {"target": "object_storage"}})
+
+        validate_publisher_config(
+            {
+                "publish": {
+                    "target": "object_storage",
+                    "bucket": "bucket-label-placeholder",
+                    "endpoint_url": "https://example.com",
+                    "region": "us-example-1",
+                    "object_key": "registry/registry.json",
+                }
+            }
+        )
 
     def test_generated_example_payload_validates(self) -> None:
         document = json.loads((ROOT / "examples/registry.example.json").read_text())

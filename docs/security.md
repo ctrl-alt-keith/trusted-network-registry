@@ -12,6 +12,8 @@ IPv4 and IPv6 payloads should be private by default.
   DNS names, device labels, bucket names, or secrets.
 - Keep Meraki source references generic and operator-controlled.
 - Keep generated registry JSON and generated tfvars JSON out of Git.
+- Keep Object Storage objects private unless a later, explicit operational
+  decision documents a different access model.
 
 ## Credential Handling
 
@@ -25,12 +27,21 @@ Credential names may appear in docs and examples as environment variables:
 Do not put credential values in config files, example files, Terraform
 variables committed to Git, logs, or PR notes.
 
+The publisher reads Object Storage upload credentials only from
+`LINODE_OBJ_ACCESS_KEY` and `LINODE_OBJ_SECRET_KEY`. It does not support
+profiles, credential files, committed access keys, or provider-specific secret
+blocks in publisher config.
+
 ## Terraform State
 
 Terraform state can store sensitive values even when variables are marked
 sensitive. Keep state private, encrypted where practical, and excluded from
 Git. This repo's Terraform manages bucket infrastructure only; it intentionally
 does not manage generated registry object contents.
+
+Object Storage bucket labels, endpoint URLs, and object keys can reveal private
+deployment details. Keep real values out of committed examples, PR notes, and
+routine logs.
 
 ## Expiration
 

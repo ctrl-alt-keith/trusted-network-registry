@@ -12,6 +12,8 @@ run.
 - Secrets are injected through an env file or Synology-supported secret
   mechanism.
 - Generated output is written to a private mounted directory.
+- When `publish.target = "object_storage"`, the generated output is still
+  rendered locally first, then uploaded to the configured private object.
 
 The MVP intentionally avoids Ansible, the Terraform Docker provider, and
 long-running daemon loops. Those can be evaluated later if manual scheduling or

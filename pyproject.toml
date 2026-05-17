@@ -10,7 +10,9 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
 authors = [{ name = "Keith Minnig" }]
-dependencies = []
+dependencies = [
+    "boto3>=1.35.99,<1.36",
+]
 
 [project.scripts]
 trusted-network-registry = "trusted_network_registry.cli:main"
