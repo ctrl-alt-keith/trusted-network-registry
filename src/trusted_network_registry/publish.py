@@ -9,7 +9,10 @@ from pathlib import Path
 from typing import Any, Callable, Mapping
 
 from .config import PublisherConfig, load_publisher_config
-from .discovery.meraki import render_meraki_entries_from_fixture
+from .discovery.meraki import (
+    discover_meraki_uplink_entries,
+    render_meraki_entries_from_fixture,
+)
 from .discovery.static import render_static_entries
 from .object_storage import ObjectStorageUploadResult, upload_registry_payload
 from .registry import parse_timestamp, render_registry, utc_now
@@ -36,15 +39,24 @@ def publish_once(
 
     entries = render_static_entries(config.static_entries)
     if config.meraki.enabled:
-        assert config.meraki.fixture_path is not None
-        fixture_path = _resolve_relative(config_path, config.meraki.fixture_path)
-        entries.extend(
-            render_meraki_entries_from_fixture(
-                fixture_path,
-                observed_at=generated_at,
-                valid_until=valid_until,
+        if config.meraki.fixture_path:
+            fixture_path = _resolve_relative(config_path, config.meraki.fixture_path)
+            entries.extend(
+                render_meraki_entries_from_fixture(
+                    fixture_path,
+                    observed_at=generated_at,
+                    valid_until=valid_until,
+                )
             )
-        )
+        else:
+            assert config.meraki.organization_id is not None
+            entries.extend(
+                discover_meraki_uplink_entries(
+                    organization_id=config.meraki.organization_id,
+                    observed_at=generated_at,
+                    valid_until=valid_until,
+                )
+            )
 
     registry = render_registry(
         entries,

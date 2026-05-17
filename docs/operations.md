@@ -38,6 +38,14 @@ that payload to the configured object key with a private ACL. It does not
 create buckets, change bucket policies, make objects public, mutate firewalls,
 or run a reconciliation loop.
 
+## Live Meraki Discovery
+
+For live Meraki discovery, configure `meraki.enabled = true` and
+`meraki.organization_id` in a private local config, omit `meraki.fixture_path`,
+and export `MERAKI_DASHBOARD_API_KEY` before running the one-shot publisher.
+The publisher calls only the read-only uplink-address endpoint and follows
+documented `Link` header pagination until no next page is present.
+
 ## Rotation
 
 Set `registry.ttl_seconds` to the maximum acceptable age for consumers. The

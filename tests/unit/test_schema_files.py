@@ -11,8 +11,8 @@ from trusted_network_registry.schema import (
     PUBLISH_TARGETS,
     REGISTRY_META_REQUIRED,
     REGISTRY_REQUIRED,
-    SOURCE_TYPES,
     SchemaError,
+    SOURCE_TYPES,
     validate_publisher_config,
     validate_registry_document,
 )
@@ -78,6 +78,40 @@ class SchemaFileTests(unittest.TestCase):
                 }
             }
         )
+
+    def test_live_meraki_config_requires_organization_or_fixture(self) -> None:
+        validate_publisher_config(
+            {
+                "meraki": {"enabled": True, "organization_id": "local"},
+                "publish": {"local_path": "registry.json"},
+            }
+        )
+        validate_publisher_config(
+            {
+                "meraki": {"enabled": True, "fixture_path": "fixture.json"},
+                "publish": {"local_path": "registry.json"},
+            }
+        )
+
+        with self.assertRaises(SchemaError):
+            validate_publisher_config(
+                {
+                    "meraki": {"enabled": True},
+                    "publish": {"local_path": "registry.json"},
+                }
+            )
+
+        with self.assertRaises(SchemaError):
+            validate_publisher_config(
+                {
+                    "meraki": {
+                        "enabled": True,
+                        "organization_id": "local",
+                        "fixture_path": "fixture.json",
+                    },
+                    "publish": {"local_path": "registry.json"},
+                }
+            )
 
     def test_generated_example_payload_validates(self) -> None:
         document = json.loads((ROOT / "examples/registry.example.json").read_text())

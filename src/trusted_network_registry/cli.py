@@ -8,6 +8,7 @@ from pathlib import Path
 import sys
 
 from .config import load_publisher_config
+from .discovery.meraki import MerakiDiscoveryError
 from .object_storage import ObjectStorageError
 from .publish import publish_once
 from .schema import SchemaError, validate_registry_document
@@ -60,7 +61,14 @@ def main(argv: list[str] | None = None) -> int:
             load_publisher_config(args.path)
             print(json.dumps({"status": "valid", "path": str(args.path)}))
             return 0
-    except (OSError, ObjectStorageError, SchemaError, ValueError, json.JSONDecodeError) as exc:
+    except (
+        OSError,
+        MerakiDiscoveryError,
+        ObjectStorageError,
+        SchemaError,
+        ValueError,
+        json.JSONDecodeError,
+    ) as exc:
         print(json.dumps({"status": "error", "error": str(exc)}), file=sys.stderr)
         return 1
     return 1
