@@ -1,0 +1,24 @@
+.worktrees/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+build/
+dist/
+*.egg-info/
+
+# Generated registry artifacts are sensitive operational data.
+registry.json
+registry.example.generated.json
+*.auto.tfvars.json
+.check-output/
+
+# Terraform local state and plans may contain credentials or identifiers.
+*.tfstate
+*.tfstate.*
+*.tfplan
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars

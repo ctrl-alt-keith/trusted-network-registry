@@ -1,0 +1,21 @@
+[registry]
+name = "trusted-network-registry"
+ttl_seconds = 3600
+
+[[static_entries]]
+id = "admin-static-example"
+cidr = "198.51.100.0/24"
+source_ref = "static-admin"
+
+[[static_entries]]
+id = "admin-static-ipv6-example"
+cidr = "2001:db8:100::/64"
+source_ref = "static-admin-ipv6"
+
+[meraki]
+enabled = false
+
+[publish]
+target = "local_file"
+local_path = "/out/registry.json"
+tfvars_path = "/out/trusted-registry.auto.tfvars.json"

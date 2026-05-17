@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "trusted-network-registry"
+version = "0.1.0"
+description = "Public-safe publisher for a private trusted/admin CIDR registry"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Keith Minnig" }]
+dependencies = []
+
+[project.scripts]
+trusted-network-registry = "trusted_network_registry.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

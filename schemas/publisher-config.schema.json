@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/trusted-network-registry/publisher-config.schema.json",
+  "title": "Trusted Network Registry Publisher Config",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "registry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "ttl_seconds": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "static_entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "cidr", "source_ref"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "cidr": { "type": "string", "minLength": 1 },
+          "source_ref": { "type": "string", "minLength": 1 },
+          "status": { "enum": ["active", "inactive"] }
+        }
+      }
+    },
+    "meraki": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "fixture_path": { "type": "string", "minLength": 1 }
+      }
+    },
+    "publish": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "target": { "enum": ["local_file", "object_storage"] },
+        "local_path": { "type": "string", "minLength": 1 },
+        "tfvars_path": { "type": "string", "minLength": 1 },
+        "object_key": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/trusted-network-registry/registry.schema.json",
+  "title": "Trusted Network Registry v1",
+  "type": "object",
+  "required": ["schema_version", "registry", "entries", "summary"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "registry": {
+      "type": "object",
+      "required": ["name", "generated_at", "valid_until", "publisher_version"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "generated_at": { "type": "string", "format": "date-time" },
+        "valid_until": { "type": "string", "format": "date-time" },
+        "publisher_version": { "type": "string", "minLength": 1 }
+      }
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "cidr",
+          "address_family",
+          "kind",
+          "source_type",
+          "source_ref",
+          "status"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "cidr": { "type": "string", "minLength": 1 },
+          "address_family": { "enum": ["ipv4", "ipv6"] },
+          "kind": { "enum": ["static", "discovered"] },
+          "source_type": { "enum": ["config", "meraki_uplink_addresses"] },
+          "source_ref": { "type": "string", "minLength": 1 },
+          "observed_at": { "type": "string", "format": "date-time" },
+          "expires_at": { "type": "string", "format": "date-time" },
+          "status": { "enum": ["active", "inactive"] }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["entry_count", "static_count", "discovered_count"],
+      "additionalProperties": false,
+      "properties": {
+        "entry_count": { "type": "integer", "minimum": 0 },
+        "static_count": { "type": "integer", "minimum": 0 },
+        "discovered_count": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}
