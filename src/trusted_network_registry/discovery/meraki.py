@@ -8,11 +8,12 @@ operator-controlled source references.
 from __future__ import annotations
 
 from datetime import datetime
+import ipaddress
 import json
 from pathlib import Path
 from typing import Any
 
-from ..registry import canonical_cidr, format_timestamp
+from ..registry import format_timestamp
 
 ALLOWED_SOURCE_REFS = {"wan1", "wan2", "cellular"}
 
@@ -45,7 +46,10 @@ def render_meraki_uplink_entries(
             address = uplink.get("publicIp")
             if not address:
                 continue
-            cidr, family = canonical_cidr(f"{address}/32")
+            parsed_address = ipaddress.ip_address(address)
+            prefix = 32 if parsed_address.version == 4 else 128
+            family = "ipv4" if parsed_address.version == 4 else "ipv6"
+            cidr = f"{parsed_address}/{prefix}"
             entries.append(
                 {
                     "id": f"meraki-{source_ref}-{family}",

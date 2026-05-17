@@ -9,7 +9,8 @@ trusted-network-registry publish --once --config publisher-config.toml
 ```
 
 The command validates the generated registry before writing it. If configured,
-it also writes generated tfvars JSON for Terraform consumers.
+it also writes generated tfvars JSON for Terraform consumers. Generated CIDR
+lists may contain both IPv4 and IPv6 entries.
 
 ## Rotation
 

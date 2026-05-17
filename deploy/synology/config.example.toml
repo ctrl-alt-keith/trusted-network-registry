@@ -7,6 +7,11 @@ id = "admin-static-example"
 cidr = "198.51.100.0/24"
 source_ref = "static-admin"
 
+[[static_entries]]
+id = "admin-static-ipv6-example"
+cidr = "2001:db8:100::/64"
+source_ref = "static-admin-ipv6"
+
 [meraki]
 enabled = false
 

@@ -31,4 +31,5 @@ variable "trusted_admin_cidrs" {
 ```
 
 Both examples expose `registry_valid_until` so callers can reject stale data
-before using CIDRs.
+before using CIDRs. Consumers should expect `trusted_admin_cidrs` to contain a
+mixed IPv4 and IPv6 list.

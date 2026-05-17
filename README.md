@@ -9,10 +9,11 @@ affiliates.
 
 ## What This Repo Does
 
-- Builds a versioned JSON registry of trusted/admin CIDR entries.
+- Builds a versioned JSON registry of trusted/admin IPv4 and IPv6 CIDR entries.
 - Validates and canonicalizes static CIDR entries first.
-- Provides bounded Meraki uplink discovery scaffolding that avoids publishing
-  raw provider identifiers.
+- Provides bounded Meraki uplink discovery scaffolding that renders IPv4 host
+  addresses as `/32` and IPv6 host addresses as `/128` without publishing raw
+  provider identifiers.
 - Supports one-shot publisher execution for scheduled environments such as
   Synology.
 - Provides Terraform that provisions Object Storage infrastructure only.
@@ -37,6 +38,7 @@ repository use only documentation address ranges:
 - `192.0.2.0/24`
 - `198.51.100.0/24`
 - `203.0.113.0/24`
+- `2001:db8::/32`
 
 Do not commit real home IPs, Meraki organization IDs, network IDs, serials,
 bucket names, provider identifiers, internal DNS names, private URLs, or

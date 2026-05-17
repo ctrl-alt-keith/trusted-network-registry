@@ -1,7 +1,7 @@
 # Architecture
 
 Trusted Network Registry has one MVP responsibility: produce a private,
-time-bounded JSON registry of trusted/admin CIDRs.
+time-bounded JSON registry of trusted/admin IPv4 and IPv6 CIDRs.
 
 ## Boundaries
 
@@ -14,8 +14,9 @@ time-bounded JSON registry of trusted/admin CIDRs.
 ## Flow
 
 1. Load publisher config.
-2. Canonicalize static CIDR entries.
-3. Optionally read sanitized Meraki uplink fixture data.
+2. Canonicalize static IPv4 and IPv6 CIDR entries.
+3. Optionally read sanitized Meraki uplink fixture data, rendering IPv4 public
+   host addresses as `/32` and IPv6 public host addresses as `/128`.
 4. Render registry JSON with `generated_at` and `valid_until`.
 5. Validate the registry document.
 6. Write registry JSON and optional generated tfvars JSON.
@@ -27,8 +28,10 @@ as a Synology scheduled task, owns cadence.
 
 The Meraki adapter is scaffolded around sanitized uplink-address fixture data.
 It does not make live Dashboard API calls in the MVP. Published entries use
-generic source refs such as `wan1` and never include raw serials, organization
-IDs, network IDs, device names, ISP names, or topology labels.
+generic source refs such as `wan1`, `wan2`, and `cellular` and never include
+raw serials, organization IDs, network IDs, device names, ISP names, or
+topology labels. Fixture `publicIp` values are parsed with Python's
+`ipaddress` module so IPv4 and IPv6 handling stays explicit.
 
 ## Storage Boundary
 

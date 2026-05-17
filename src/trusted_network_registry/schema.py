@@ -22,6 +22,11 @@ ENTRY_REQUIRED = {
     "source_ref",
     "status",
 }
+ADDRESS_FAMILIES = {"ipv4", "ipv6"}
+ENTRY_KINDS = {"static", "discovered"}
+SOURCE_TYPES = {"config", "meraki_uplink_addresses"}
+ENTRY_STATUSES = {"active", "inactive"}
+PUBLISH_TARGETS = {"local_file", "object_storage"}
 
 
 def validate_rfc3339_z(value: str, field: str) -> datetime:
@@ -71,11 +76,13 @@ def validate_registry_document(document: dict[str, Any]) -> None:
                 f"entries[{index}].cidr must be canonical: {network.with_prefixlen}"
             )
         expected_family = "ipv4" if network.version == 4 else "ipv6"
+        if entry["address_family"] not in ADDRESS_FAMILIES:
+            raise SchemaError(f"entries[{index}].address_family is not supported")
         if entry["address_family"] != expected_family:
             raise SchemaError(f"entries[{index}].address_family does not match cidr")
 
         kind = entry["kind"]
-        if kind not in {"static", "discovered"}:
+        if kind not in ENTRY_KINDS:
             raise SchemaError(f"entries[{index}].kind must be static or discovered")
         if kind == "static":
             static_count += 1
@@ -85,10 +92,10 @@ def validate_registry_document(document: dict[str, Any]) -> None:
                 if field in entry:
                     validate_rfc3339_z(entry[field], f"entries[{index}].{field}")
 
-        if entry["source_type"] not in {"config", "meraki_uplink_addresses"}:
+        if entry["source_type"] not in SOURCE_TYPES:
             raise SchemaError(f"entries[{index}].source_type is not supported")
         _non_empty_string(entry["source_ref"], f"entries[{index}].source_ref")
-        if entry["status"] not in {"active", "inactive"}:
+        if entry["status"] not in ENTRY_STATUSES:
             raise SchemaError(f"entries[{index}].status must be active or inactive")
 
     summary = document["summary"]
@@ -134,7 +141,7 @@ def validate_publisher_config(config: dict[str, Any]) -> None:
     if publish and not isinstance(publish, dict):
         raise SchemaError("publish config must be an object")
     target = publish.get("target", "local_file")
-    if target not in {"local_file", "object_storage"}:
+    if target not in PUBLISH_TARGETS:
         raise SchemaError("publish.target must be local_file or object_storage")
     if target == "local_file" and not publish.get("local_path"):
         raise SchemaError("publish.local_path is required for local_file")

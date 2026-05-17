@@ -8,6 +8,12 @@ cidr = "198.51.100.42/24"
 source_ref = "static-admin"
 status = "active"
 
+[[static_entries]]
+id = "admin-static-ipv6-example"
+cidr = "2001:db8:100::42/64"
+source_ref = "static-admin-ipv6"
+status = "active"
+
 [meraki]
 enabled = true
 fixture_path = "../tests/fixtures/sanitized/meraki-uplinks.example.json"

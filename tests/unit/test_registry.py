@@ -28,8 +28,31 @@ class RegistryTests(unittest.TestCase):
         self.assertEqual(entries[0]["cidr"], "198.51.100.0/24")
         self.assertEqual(entries[0]["address_family"], "ipv4")
 
+    def test_static_ipv6_cidr_is_canonicalized(self) -> None:
+        entries = render_static_entries(
+            [
+                StaticEntryConfig(
+                    id="admin-static-ipv6-example",
+                    cidr="2001:db8:100::42/64",
+                    source_ref="static-admin-ipv6",
+                )
+            ]
+        )
+
+        self.assertEqual(entries[0]["cidr"], "2001:db8:100::/64")
+        self.assertEqual(entries[0]["address_family"], "ipv6")
+
     def test_example_registry_validates(self) -> None:
         document = json.loads((ROOT / "examples/registry.example.json").read_text())
+        validate_registry_document(document)
+
+    def test_registry_validation_accepts_ipv6_entries(self) -> None:
+        document = json.loads((ROOT / "examples/registry.example.json").read_text())
+        ipv6_entries = [
+            entry for entry in document["entries"] if entry["address_family"] == "ipv6"
+        ]
+
+        self.assertEqual(len(ipv6_entries), 2)
         validate_registry_document(document)
 
     def test_noncanonical_registry_fails(self) -> None:
@@ -65,7 +88,12 @@ class RegistryTests(unittest.TestCase):
 
         self.assertEqual(
             tfvars["trusted_admin_cidrs"],
-            ["198.51.100.0/24", "203.0.113.10/32"],
+            [
+                "198.51.100.0/24",
+                "2001:db8:100::/64",
+                "203.0.113.10/32",
+                "2001:db8::10/128",
+            ],
         )
 
 

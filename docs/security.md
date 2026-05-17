@@ -2,11 +2,12 @@
 
 Registry payloads are sensitive operational access data. A CIDR registry can
 expose where administrative access is expected to originate, so generated
-payloads should be private by default.
+IPv4 and IPv6 payloads should be private by default.
 
 ## Public-Safe Rules
 
-- Examples use only documentation IP ranges.
+- Examples use only documentation IP ranges, including `2001:db8::/32` for
+  IPv6.
 - Do not commit real home IPs, provider identifiers, private URLs, internal
   DNS names, device labels, bucket names, or secrets.
 - Keep Meraki source references generic and operator-controlled.
