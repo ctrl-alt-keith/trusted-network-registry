@@ -51,17 +51,22 @@ secrets.
 Create a local config:
 
 ```sh
-cp examples/publisher-config.example.toml publisher-config.toml
+mkdir -p operator/generated
+cp examples/publisher-config.example.toml operator/publisher-config.toml
 ```
 
 Run the one-shot publisher:
 
 ```sh
 python -m trusted_network_registry.cli publish --once \
-  --config publisher-config.toml \
-  --output registry.json \
-  --tfvars-output trusted-registry.auto.tfvars.json
+  --config operator/publisher-config.toml \
+  --output operator/generated/registry.json \
+  --tfvars-output operator/generated/trusted-registry.auto.tfvars.json
 ```
+
+The `operator/` directory is local-only and ignored by Git. Keep edited
+publisher config, env files, generated registry JSON, and generated tfvars
+private.
 
 To publish to Object Storage, set `publish.target = "object_storage"` and
 provide only the private bucket label, HTTPS S3 endpoint URL, region, and
@@ -99,6 +104,7 @@ compile checks, unit tests, schema/example validation, and public-safety tests.
 - [Registry schema](docs/registry-schema.md)
 - [Terraform integration](docs/terraform-integration.md)
 - [Synology deployment](docs/synology-deployment.md)
+- [First real operator run](docs/first-real-operator-run.md)
 - [Provider assumptions](docs/provider-assumptions.md)
 - [Operations](docs/operations.md)
 - [Follow-ups](docs/followups.md)

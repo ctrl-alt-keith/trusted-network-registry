@@ -19,4 +19,8 @@ The MVP intentionally avoids Ansible, the Terraform Docker provider, and
 long-running daemon loops. Those can be evaluated later if manual scheduling or
 Compose becomes painful.
 
+Run and verify the first publish locally before moving the same private
+operator config and env pattern to Synology. See
+[`first-real-operator-run.md`](first-real-operator-run.md).
+
 See [`../deploy/synology`](../deploy/synology) for example files.

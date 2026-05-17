@@ -34,3 +34,7 @@ docker compose run --rm publisher
 
 Do not commit edited `publisher.env`, generated registry JSON, or generated
 tfvars JSON.
+
+Before scheduling on Synology, complete a local one-shot publish and private
+upload verification with the repository runbook:
+[`../../docs/first-real-operator-run.md`](../../docs/first-real-operator-run.md).

@@ -13,6 +13,7 @@ IPv4 and IPv6 payloads should be private by default.
 - Keep Meraki source references generic and operator-controlled. Registry
   entries may use only `wan1`, `wan2`, or `cellular` for live Meraki uplinks.
 - Keep generated registry JSON and generated tfvars JSON out of Git.
+- Keep local operator config and env files under ignored `operator/` paths.
 - Keep Object Storage objects private unless a later, explicit operational
   decision documents a different access model.
 
