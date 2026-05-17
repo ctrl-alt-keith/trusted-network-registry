@@ -16,6 +16,8 @@ affiliates.
   provider identifiers.
 - Supports one-shot publisher execution for scheduled environments such as
   Synology.
+- Can upload the generated registry payload to S3-compatible Object Storage
+  when configured.
 - Provides Terraform that provisions Object Storage infrastructure only.
 - Provides read-only Terraform consumer examples for already-produced registry
   JSON.
@@ -60,6 +62,18 @@ python -m trusted_network_registry.cli publish --once \
   --output registry.json \
   --tfvars-output trusted-registry.auto.tfvars.json
 ```
+
+To publish to Object Storage, set `publish.target = "object_storage"` and
+provide only the private bucket label, HTTPS S3 endpoint URL, region, and
+object key in config. The publisher still renders and validates the registry
+locally first, then uploads the same generated payload with a private ACL.
+Runtime credentials come only from these environment variables:
+
+- `LINODE_OBJ_ACCESS_KEY`
+- `LINODE_OBJ_SECRET_KEY`
+
+Do not put Object Storage credential values, private bucket labels, or
+non-public endpoint URLs in committed files.
 
 Validate the example registry:
 

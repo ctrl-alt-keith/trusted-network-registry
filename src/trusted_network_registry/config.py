@@ -30,6 +30,9 @@ class PublishConfig:
     local_path: str = "registry.json"
     tfvars_path: str | None = None
     object_key: str = "registry.json"
+    bucket: str | None = None
+    endpoint_url: str | None = None
+    region: str | None = None
 
 
 @dataclass(frozen=True)
@@ -72,5 +75,8 @@ def publisher_config_from_dict(raw: dict[str, Any]) -> PublisherConfig:
             local_path=publish.get("local_path", "registry.json"),
             tfvars_path=publish.get("tfvars_path"),
             object_key=publish.get("object_key", "registry.json"),
+            bucket=publish.get("bucket"),
+            endpoint_url=publish.get("endpoint_url"),
+            region=publish.get("region"),
         ),
     )

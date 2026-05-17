@@ -4,14 +4,21 @@ from __future__ import annotations
 
 from datetime import timedelta
 import json
+import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, Mapping
 
 from .config import PublisherConfig, load_publisher_config
 from .discovery.meraki import render_meraki_entries_from_fixture
 from .discovery.static import render_static_entries
+from .object_storage import ObjectStorageUploadResult, upload_registry_payload
 from .registry import parse_timestamp, render_registry, utc_now
 from .schema import validate_registry_document
+
+ObjectStorageUploader = Callable[
+    [dict[str, Any], PublisherConfig, Mapping[str, str]],
+    ObjectStorageUploadResult,
+]
 
 
 def publish_once(
@@ -20,6 +27,8 @@ def publish_once(
     output_path: Path | None = None,
     tfvars_output_path: Path | None = None,
     generated_at_text: str | None = None,
+    environ: Mapping[str, str] | None = None,
+    object_storage_uploader: ObjectStorageUploader | None = None,
 ) -> dict[str, Any]:
     config = load_publisher_config(config_path)
     generated_at = parse_timestamp(generated_at_text) if generated_at_text else utc_now()
@@ -54,6 +63,10 @@ def publish_once(
     if target_tfvars is not None:
         _write_json(target_tfvars, render_tfvars(registry))
 
+    if config.publish.target == "object_storage":
+        uploader = object_storage_uploader or _upload_to_object_storage
+        uploader(registry, config, environ or os.environ)
+
     return registry
 
 
@@ -71,11 +84,19 @@ def render_tfvars(registry: dict[str, Any]) -> dict[str, Any]:
 
 
 def _default_output_path(config_path: Path, config: PublisherConfig) -> Path:
-    if config.publish.target == "object_storage":
-        # MVP scaffold: render the object payload locally for a separate
-        # credentialed upload step. Terraform does not own this dynamic file.
-        return _resolve_relative(config_path, config.publish.local_path)
     return _resolve_relative(config_path, config.publish.local_path)
+
+
+def _upload_to_object_storage(
+    registry: dict[str, Any],
+    config: PublisherConfig,
+    environ: Mapping[str, str],
+) -> ObjectStorageUploadResult:
+    return upload_registry_payload(
+        registry=registry,
+        publish=config.publish,
+        environ=environ,
+    )
 
 
 def _resolve_relative(config_path: Path, value: str) -> Path:

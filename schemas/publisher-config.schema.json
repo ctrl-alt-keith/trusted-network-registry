@@ -38,11 +38,29 @@
     "publish": {
       "type": "object",
       "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "required": ["target"],
+            "properties": { "target": { "const": "object_storage" } }
+          },
+          "then": {
+            "required": ["bucket", "endpoint_url", "region", "object_key"]
+          }
+        }
+      ],
       "properties": {
         "target": { "enum": ["local_file", "object_storage"] },
         "local_path": { "type": "string", "minLength": 1 },
         "tfvars_path": { "type": "string", "minLength": 1 },
-        "object_key": { "type": "string", "minLength": 1 }
+        "object_key": { "type": "string", "minLength": 1 },
+        "bucket": { "type": "string", "minLength": 1 },
+        "endpoint_url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://"
+        },
+        "region": { "type": "string", "minLength": 1 }
       }
     }
   }

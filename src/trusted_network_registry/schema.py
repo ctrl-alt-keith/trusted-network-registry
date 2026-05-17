@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 import ipaddress
+from urllib.parse import urlparse
 from typing import Any
 
 
@@ -145,6 +146,12 @@ def validate_publisher_config(config: dict[str, Any]) -> None:
         raise SchemaError("publish.target must be local_file or object_storage")
     if target == "local_file" and not publish.get("local_path"):
         raise SchemaError("publish.local_path is required for local_file")
+    if target == "object_storage":
+        for field in ("bucket", "endpoint_url", "region", "object_key"):
+            _non_empty_string(publish.get(field), f"publish.{field}")
+        endpoint = urlparse(publish["endpoint_url"])
+        if endpoint.scheme != "https" or not endpoint.netloc:
+            raise SchemaError("publish.endpoint_url must be an https URL")
 
 
 def _require(document: dict[str, Any], keys: set[str], label: str) -> None:

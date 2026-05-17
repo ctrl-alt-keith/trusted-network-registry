@@ -19,7 +19,9 @@ time-bounded JSON registry of trusted/admin IPv4 and IPv6 CIDRs.
    host addresses as `/32` and IPv6 public host addresses as `/128`.
 4. Render registry JSON with `generated_at` and `valid_until`.
 5. Validate the registry document.
-6. Write registry JSON and optional generated tfvars JSON.
+6. Write registry JSON locally and optional generated tfvars JSON.
+7. If `publish.target = "object_storage"`, upload the validated registry JSON
+   to the configured S3-compatible Object Storage object.
 
 The MVP favors one-shot execution through `publish --once`. A scheduler, such
 as a Synology scheduled task, owns cadence.
@@ -36,5 +38,12 @@ topology labels. Fixture `publicIp` values are parsed with Python's
 ## Storage Boundary
 
 Terraform provisions a private Object Storage bucket. It does not upload,
-version, or replace generated registry JSON. The publisher or a future upload
-helper owns dynamic object content.
+version, or replace generated registry JSON. The publisher owns dynamic object
+content by rendering, validating, and then uploading the registry object during
+one-shot execution.
+
+Object Storage upload config stays intentionally narrow: bucket label, HTTPS
+endpoint URL, region, and object key. Credentials are read only from
+`LINODE_OBJ_ACCESS_KEY` and `LINODE_OBJ_SECRET_KEY` at runtime. The upload path
+uses the S3-compatible API and requests a private ACL so generated registry
+payloads remain private by default.

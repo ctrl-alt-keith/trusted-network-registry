@@ -12,6 +12,7 @@ Terraform owns:
 Terraform does not own:
 
 - generated registry JSON contents
+- uploaded registry objects
 - generated `.auto.tfvars.json`
 - firewall rules
 - consumer mutations
