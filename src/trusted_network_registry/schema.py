@@ -28,6 +28,7 @@ ENTRY_KINDS = {"static", "discovered"}
 SOURCE_TYPES = {"config", "meraki_uplink_addresses"}
 ENTRY_STATUSES = {"active", "inactive"}
 PUBLISH_TARGETS = {"local_file", "object_storage"}
+UNIVERSAL_CIDRS = {"0.0.0.0/0", "::/0"}
 
 
 def validate_rfc3339_z(value: str, field: str) -> datetime:
@@ -72,6 +73,7 @@ def validate_registry_document(document: dict[str, Any]) -> None:
         ids.add(entry_id)
 
         network = ipaddress.ip_network(entry["cidr"], strict=False)
+        _reject_universal_cidr(network, f"entries[{index}].cidr")
         if entry["cidr"] != network.with_prefixlen:
             raise SchemaError(
                 f"entries[{index}].cidr must be canonical: {network.with_prefixlen}"
@@ -129,7 +131,8 @@ def validate_publisher_config(config: dict[str, Any]) -> None:
             raise SchemaError(f"static_entries[{index}] must be an object")
         _require(entry, {"id", "cidr", "source_ref"}, f"static_entries[{index}]")
         _non_empty_string(entry["id"], f"static_entries[{index}].id")
-        ipaddress.ip_network(entry["cidr"], strict=False)
+        network = ipaddress.ip_network(entry["cidr"], strict=False)
+        _reject_universal_cidr(network, f"static_entries[{index}].cidr")
         _non_empty_string(entry["source_ref"], f"static_entries[{index}].source_ref")
 
     meraki = config.get("meraki", {})
@@ -158,6 +161,8 @@ def validate_publisher_config(config: dict[str, Any]) -> None:
         endpoint = urlparse(publish["endpoint_url"])
         if endpoint.scheme != "https" or not endpoint.netloc:
             raise SchemaError("publish.endpoint_url must be an https URL")
+        if endpoint.username or endpoint.password:
+            raise SchemaError("publish.endpoint_url must not include userinfo")
 
 
 def _require(document: dict[str, Any], keys: set[str], label: str) -> None:
@@ -170,3 +175,11 @@ def _non_empty_string(value: Any, field: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise SchemaError(f"{field} must be a non-empty string")
     return value
+
+
+def _reject_universal_cidr(
+    network: ipaddress.IPv4Network | ipaddress.IPv6Network,
+    field: str,
+) -> None:
+    if network.with_prefixlen in UNIVERSAL_CIDRS:
+        raise SchemaError(f"{field} must not be a universal allow CIDR")

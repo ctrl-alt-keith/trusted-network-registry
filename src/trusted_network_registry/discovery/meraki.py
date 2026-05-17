@@ -11,7 +11,7 @@ from pathlib import Path
 import re
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.parse import quote, urljoin
+from urllib.parse import quote, urljoin, urlparse
 from urllib.request import Request, urlopen
 
 from ..registry import format_timestamp
@@ -167,6 +167,7 @@ def _uplinks_url(organization_id: str) -> str:
 def _next_link(link_header: str | None, *, current_url: str) -> str | None:
     if not link_header:
         return None
+    expected = urlparse(DASHBOARD_API_BASE_URL)
     for part in link_header.split(","):
         pieces = [piece.strip() for piece in part.split(";")]
         if not pieces or not pieces[0].startswith("<") or not pieces[0].endswith(">"):
@@ -177,7 +178,13 @@ def _next_link(link_header: str | None, *, current_url: str) -> str | None:
             if piece.lower().startswith("rel=")
         }
         if "next" in rels:
-            return urljoin(current_url, pieces[0][1:-1])
+            next_url = urljoin(current_url, pieces[0][1:-1])
+            parsed = urlparse(next_url)
+            if parsed.scheme != "https" or parsed.netloc != expected.netloc:
+                raise MerakiDiscoveryError(
+                    "Meraki Dashboard API pagination link must stay on the Dashboard API host"
+                )
+            return next_url
     return None
 
 

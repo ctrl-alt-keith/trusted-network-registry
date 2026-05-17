@@ -3,6 +3,12 @@
 The recommended Synology execution model is a one-shot scheduled container
 run.
 
+This repository does not currently publish official container images.
+Operators should either build and publish their own private image or run the
+publisher locally in an equivalent scheduled command. The Compose files under
+`deploy/synology/` are placeholder-only examples that describe execution shape,
+not an official image distribution contract.
+
 ## Shape
 
 - The scheduled task runs the publisher container.

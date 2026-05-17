@@ -73,7 +73,9 @@ def upload_registry_payload(
     except ObjectStorageError:
         raise
     except Exception as exc:  # pragma: no cover - exact SDK exceptions vary.
-        raise ObjectStorageUploadError("object storage upload failed") from exc
+        raise ObjectStorageUploadError(
+            f"object storage upload failed ({exc.__class__.__name__})"
+        ) from exc
 
     return ObjectStorageUploadResult(key=object_key, size_bytes=len(body))
 

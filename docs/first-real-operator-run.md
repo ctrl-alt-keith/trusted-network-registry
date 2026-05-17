@@ -47,6 +47,10 @@ terraform -chdir=infra/terraform plan -var-file="../../operator/storage.tfvars"
 terraform -chdir=infra/terraform apply -var-file="../../operator/storage.tfvars"
 ```
 
+Review the plan before apply. It should contain private Object Storage
+infrastructure only, with no firewall resources and no public object or public
+bucket access resources.
+
 Terraform owns the storage infrastructure only. It does not upload registry
 JSON, manage generated `.auto.tfvars.json`, mutate firewalls, or make registry
 objects public.
@@ -103,6 +107,9 @@ EOF
 Then run commands through `op run --env-file=operator/publisher.env -- ...`.
 Do not add a secret-manager dependency to the Python package.
 
+Before the first live run, verify the Meraki API key has only the scope needed
+for the read-only uplink-address discovery endpoint.
+
 ## 4. Run One-Shot Publish Locally
 
 Create private output directories:
@@ -139,7 +146,9 @@ jq 'keys' operator/generated/registry.json
 ```
 
 Confirm `generated_at`, `valid_until`, schema version, and CIDR families look
-right. Treat the CIDR list itself as sensitive.
+right before upload. Treat the CIDR list itself as sensitive. Generated
+registry artifacts contain sensitive operational access data even when they
+are ignored by Git.
 
 ## 6. Verify The Private Upload
 
@@ -157,6 +166,8 @@ aws --endpoint-url "https://<s3-endpoint-hostname>" \
 
 trusted-network-registry validate-registry operator/verify/registry.remote.json
 ```
+
+Verify the remote object manually before wiring any consumers to it.
 
 The object must remain private. Do not publish the registry object publicly,
 grant public bucket access, or paste fetched payload contents into shared
