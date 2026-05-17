@@ -5,12 +5,21 @@
 Run exactly once:
 
 ```sh
-trusted-network-registry publish --once --config publisher-config.toml
+trusted-network-registry publish --once --config operator/publisher-config.toml
 ```
 
 The command validates the generated registry before writing it. If configured,
 it also writes generated tfvars JSON for Terraform consumers. Generated CIDR
 lists may contain both IPv4 and IPv6 entries.
+
+Keep private operator files under `operator/`, including
+`operator/publisher-config.toml`, `operator/publisher.env`, generated registry
+JSON, and generated tfvars JSON. That directory is intentionally ignored by
+Git because it may contain administrative source networks, provider
+identifiers, bucket details, object names, and credentials.
+
+For first live use, follow [`first-real-operator-run.md`](first-real-operator-run.md)
+before moving the workflow to Synology scheduling.
 
 ## Object Storage Uploads
 
@@ -32,6 +41,11 @@ Set credentials through the runtime environment only:
 LINODE_OBJ_ACCESS_KEY=...
 LINODE_OBJ_SECRET_KEY=...
 ```
+
+If using 1Password or another secret manager, keep the application contract the
+same: the secret manager should populate environment variables before the
+publisher process starts. For example, `op run --env-file=operator/publisher.env -- ...`
+can wrap the one-shot publish command without adding a Python dependency.
 
 The publisher renders and validates `/out/registry.json` first, then uploads
 that payload to the configured object key with a private ACL. It does not

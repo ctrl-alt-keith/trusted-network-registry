@@ -9,9 +9,20 @@ build/
 dist/
 *.egg-info/
 
+# Local operator runtime state is private and intentionally untracked.
+operator/
+publisher-config.toml
+.env
+*.env
+!*.env.example
+*.local.toml
+generated/
+out/
+
 # Generated registry artifacts are sensitive operational data.
 registry.json
 registry.example.generated.json
+*.generated.json
 *.auto.tfvars.json
 .check-output/
 
