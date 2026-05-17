@@ -124,7 +124,43 @@ class ObjectStorageTests(unittest.TestCase):
             )
 
         message = str(raised.exception)
-        self.assertEqual(message, "object storage upload failed")
+        self.assertEqual(message, "object storage upload failed (RuntimeError)")
+        self.assertNotIn("bucket-label-placeholder", message)
+        self.assertNotIn("placeholder-private-credential", message)
+        self.assertNotIn("https://example.com", message)
+
+    def test_upload_registry_payload_reports_safe_sdk_exception_type(self) -> None:
+        class EndpointConnectionError(Exception):
+            pass
+
+        class FailingClient:
+            def put_object(self, **kwargs: object) -> None:
+                raise EndpointConnectionError(
+                    "Could not connect to endpoint URL: https://private.example"
+                )
+
+        registry = json.loads((ROOT / "examples/registry.example.json").read_text())
+
+        with self.assertRaises(ObjectStorageUploadError) as raised:
+            upload_registry_payload(
+                registry=registry,
+                publish=PublishConfig(
+                    target="object_storage",
+                    bucket="bucket-label-placeholder",
+                    endpoint_url="https://example.com",
+                    region="us-example-1",
+                    object_key="registry/registry.json",
+                ),
+                environ={
+                    "LINODE_OBJ_ACCESS_KEY": "placeholder-access-credential",
+                    "LINODE_OBJ_SECRET_KEY": "placeholder-private-credential",
+                },
+                client_factory=lambda *_args: FailingClient(),
+            )
+
+        message = str(raised.exception)
+        self.assertEqual(message, "object storage upload failed (EndpointConnectionError)")
+        self.assertNotIn("private.example", message)
         self.assertNotIn("bucket-label-placeholder", message)
         self.assertNotIn("placeholder-private-credential", message)
 

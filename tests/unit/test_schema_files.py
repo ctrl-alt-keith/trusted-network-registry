@@ -79,6 +79,46 @@ class SchemaFileTests(unittest.TestCase):
             }
         )
 
+    def test_object_storage_endpoint_url_rejects_userinfo(self) -> None:
+        for endpoint_url in (
+            "https://user@example.com",
+            "https://user:password@example.com",
+        ):
+            with self.subTest(endpoint_url=endpoint_url):
+                with self.assertRaises(SchemaError) as raised:
+                    validate_publisher_config(
+                        {
+                            "publish": {
+                                "target": "object_storage",
+                                "bucket": "bucket-label-placeholder",
+                                "endpoint_url": endpoint_url,
+                                "region": "us-example-1",
+                                "object_key": "registry/registry.json",
+                            }
+                        }
+                    )
+
+                self.assertIn("userinfo", str(raised.exception))
+
+    def test_static_entries_reject_universal_ipv4_and_ipv6_cidrs(self) -> None:
+        for cidr in ("0.0.0.0/0", "::/0"):
+            with self.subTest(cidr=cidr):
+                with self.assertRaises(SchemaError) as raised:
+                    validate_publisher_config(
+                        {
+                            "static_entries": [
+                                {
+                                    "id": "admin-static-example",
+                                    "cidr": cidr,
+                                    "source_ref": "static-admin",
+                                }
+                            ],
+                            "publish": {"local_path": "registry.json"},
+                        }
+                    )
+
+                self.assertIn("universal allow CIDR", str(raised.exception))
+
     def test_live_meraki_config_requires_organization_or_fixture(self) -> None:
         validate_publisher_config(
             {

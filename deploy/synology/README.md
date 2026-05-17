@@ -4,6 +4,10 @@ The MVP execution model is a one-shot container run on a schedule. The
 container starts, renders one registry payload, writes logs to stdout, and
 exits.
 
+This repository does not currently publish official container images. Build
+and publish your own private image, or run the same one-shot publisher command
+locally. The Compose example is a placeholder-only execution shape.
+
 ## Recommended Shape
 
 - Schedule a Synology task to run the container periodically.
@@ -17,7 +21,8 @@ exits.
 
 ## Compose Example
 
-Copy the example files into a private directory on the NAS:
+After replacing the placeholder image with your own private image, copy the
+example files into a private directory on the NAS:
 
 ```sh
 cp docker-compose.example.yml docker-compose.yml

@@ -192,6 +192,66 @@ class MerakiTests(unittest.TestCase):
         )
         self.assertEqual(first_request.get_header("Authorization"), "Bearer example-api-key")
 
+    def test_live_discovery_accepts_same_origin_absolute_next_page(self) -> None:
+        first_link = (
+            f"<{DASHBOARD_API_BASE_URL}/organizations/example-org/devices/uplinks/"
+            'addresses/byDevice?startingAfter=page-1>; rel="next"'
+        )
+        responses = [
+            _FakeResponse([{"uplinks": []}], link=first_link),
+            _FakeResponse([{"uplinks": []}]),
+        ]
+        requests = []
+
+        def fake_urlopen(request, timeout):
+            requests.append((request, timeout))
+            return responses.pop(0)
+
+        with patch("trusted_network_registry.discovery.meraki.urlopen", fake_urlopen):
+            fetch_meraki_uplinks_by_device(
+                organization_id="example-org",
+                api_key="example-api-key",
+            )
+
+        self.assertEqual(len(requests), 2)
+        self.assertTrue(requests[1][0].full_url.startswith(DASHBOARD_API_BASE_URL))
+
+    def test_live_discovery_rejects_next_page_on_different_host(self) -> None:
+        first_link = (
+            '<https://example.invalid/api/v1/organizations/example-org/devices/uplinks/'
+            'addresses/byDevice?startingAfter=page-1>; rel="next"'
+        )
+
+        with patch(
+            "trusted_network_registry.discovery.meraki.urlopen",
+            return_value=_FakeResponse([{"uplinks": []}], link=first_link),
+        ):
+            with self.assertRaises(MerakiDiscoveryError) as raised:
+                fetch_meraki_uplinks_by_device(
+                    organization_id="example-org",
+                    api_key="example-api-key",
+                )
+
+        self.assertIn("pagination link", str(raised.exception))
+
+    def test_live_discovery_rejects_next_page_with_non_https_scheme(self) -> None:
+        first_link = (
+            '<http://api.meraki.com/api/v1/organizations/example-org/devices/uplinks/'
+            'addresses/byDevice?startingAfter=page-1>; rel="next"'
+        )
+
+        with patch(
+            "trusted_network_registry.discovery.meraki.urlopen",
+            return_value=_FakeResponse([{"uplinks": []}], link=first_link),
+        ):
+            with self.assertRaises(MerakiDiscoveryError) as raised:
+                fetch_meraki_uplinks_by_device(
+                    organization_id="example-org",
+                    api_key="example-api-key",
+                )
+
+        self.assertIn("pagination link", str(raised.exception))
+
 
 class _FakeResponse:
     def __init__(self, payload, *, link: str | None = None) -> None:

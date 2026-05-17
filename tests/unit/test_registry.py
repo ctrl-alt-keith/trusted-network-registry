@@ -62,6 +62,20 @@ class RegistryTests(unittest.TestCase):
         with self.assertRaises(SchemaError):
             validate_registry_document(document)
 
+    def test_static_registry_entries_reject_universal_cidrs(self) -> None:
+        for cidr in ("0.0.0.0/0", "::/0"):
+            with self.subTest(cidr=cidr):
+                document = json.loads((ROOT / "examples/registry.example.json").read_text())
+                document["entries"][0]["cidr"] = cidr
+                document["entries"][0]["address_family"] = (
+                    "ipv4" if cidr == "0.0.0.0/0" else "ipv6"
+                )
+
+                with self.assertRaises(SchemaError) as raised:
+                    validate_registry_document(document)
+
+                self.assertIn("universal allow CIDR", str(raised.exception))
+
     def test_publish_once_renders_registry_and_tfvars(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             output = Path(tmp) / "registry.json"
