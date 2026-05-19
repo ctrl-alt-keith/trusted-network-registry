@@ -5,8 +5,8 @@ container starts, renders one registry payload, writes logs to stdout, and
 exits.
 
 This repository does not currently publish official container images. Build
-and publish your own private image, or run the same one-shot publisher command
-locally. The Compose example is a placeholder-only execution shape.
+and load the local image manually for first Synology use, or publish your own
+private image. GHCR or other official image publication is a follow-up.
 
 ## Recommended Shape
 
@@ -21,8 +21,19 @@ locally. The Compose example is a placeholder-only execution shape.
 
 ## Compose Example
 
-After replacing the placeholder image with your own private image, copy the
-example files into a private directory on the NAS:
+Build the local image from the repository root:
+
+```sh
+docker build -t trusted-network-registry:local .
+```
+
+For first Synology use, load that image onto the NAS:
+
+```sh
+docker save trusted-network-registry:local | ssh <nas-host> docker load
+```
+
+Copy the example files into a private directory on the NAS:
 
 ```sh
 cp docker-compose.example.yml docker-compose.yml
@@ -31,11 +42,24 @@ cp publisher.env.example publisher.env
 mkdir -p out
 ```
 
-Then schedule:
+Edit the private `config.toml` and `publisher.env` on the NAS. Keep config
+mounted read-only, secrets env-only, and generated output in the private `out`
+directory.
+
+Run one one-shot publish:
+
+```sh
+ssh <nas-host> 'cd <project-dir> && docker compose run --rm publisher'
+```
+
+Then schedule the same command in Synology Task Scheduler from `<project-dir>`:
 
 ```sh
 docker compose run --rm publisher
 ```
+
+The container logs to stdout/stderr and exits after one publish. Do not run it
+as a long-lived daemon.
 
 Do not commit edited `publisher.env`, generated registry JSON, or generated
 tfvars JSON.
