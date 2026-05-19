@@ -29,14 +29,18 @@ source operator/publisher.env
 set +a
 ```
 
-For a local 1Password operator shell, `.envrc` can instead load values through
-`op run`; this does not add a secret-manager dependency to the application.
+For a local 1Password operator shell, `.envrc` can instead read placeholder
+secret references directly; this does not add a secret-manager dependency to
+the application.
 
 ```bash
 # .envrc
 layout python .venv
 
-eval "$(op run --env-file=operator/publisher.env -- env | sed 's/^/export /')"
+export LINODE_TOKEN="$(op read 'op://<vault>/<item>/<field>')"
+export LINODE_OBJ_ACCESS_KEY="$(op read 'op://<vault>/<item>/<field>')"
+export LINODE_OBJ_SECRET_KEY="$(op read 'op://<vault>/<item>/<field>')"
+export MERAKI_DASHBOARD_API_KEY="$(op read 'op://<vault>/<item>/<field>')"
 ```
 
 ## Local Layout

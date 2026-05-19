@@ -68,14 +68,18 @@ source operator/publisher.env
 set +a
 ```
 
-For a local 1Password flow, `.envrc` can instead wrap `op run`; `direnv` and
-`op` remain optional operator tools, not project dependencies.
+For a local 1Password flow, `.envrc` can instead read placeholder secret
+references directly; `direnv` and `op` remain optional operator tools, not
+project dependencies.
 
 ```bash
 # .envrc
 layout python .venv
 
-eval "$(op run --env-file=operator/publisher.env -- env | sed 's/^/export /')"
+export LINODE_TOKEN="$(op read 'op://<vault>/<item>/<field>')"
+export LINODE_OBJ_ACCESS_KEY="$(op read 'op://<vault>/<item>/<field>')"
+export LINODE_OBJ_SECRET_KEY="$(op read 'op://<vault>/<item>/<field>')"
+export MERAKI_DASHBOARD_API_KEY="$(op read 'op://<vault>/<item>/<field>')"
 ```
 
 Create a local config:
