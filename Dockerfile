@@ -11,4 +11,5 @@ COPY src ./src
 RUN python -m pip install --no-cache-dir --upgrade pip setuptools wheel \
     && python -m pip install --no-cache-dir .
 
-CMD ["trusted-network-registry", "--help"]
+ENTRYPOINT ["trusted-network-registry"]
+CMD ["--help"]

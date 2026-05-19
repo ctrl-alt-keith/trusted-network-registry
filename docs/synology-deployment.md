@@ -11,7 +11,8 @@ a follow-up, not part of the current repo contract.
 ## Shape
 
 - The scheduled task runs the publisher container.
-- The container executes `trusted-network-registry publish --once`.
+- The container entrypoint is `trusted-network-registry`.
+- The scheduled task passes the one-shot `publish --once` command.
 - Logs go to stdout.
 - Config is mounted read-only.
 - Secrets are injected through `publisher.env` at container execution time.
@@ -68,10 +69,10 @@ ssh <nas-host> 'cd <project-dir> && docker compose run --rm publisher'
 The checked-in Compose example uses the local image name
 `trusted-network-registry:local`. It mounts `config.toml` read-only at
 `/config/config.toml`, injects `publisher.env`, writes generated output under
-`/out`, and runs:
+`/out`, and passes these arguments to the image entrypoint:
 
 ```sh
-trusted-network-registry publish --once --config /config/config.toml
+publish --once --config /config/config.toml
 ```
 
 Do not commit edited operator config, env files, generated registry JSON, or
