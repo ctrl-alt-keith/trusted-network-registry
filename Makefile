@@ -1,10 +1,22 @@
 PYTHON ?= python3
+VENV ?= .venv
+VENV_PYTHON := $(VENV)/bin/python
 PYTHONPATH := src
 
-.PHONY: help check compile test schema-check examples-check security-check
+.PHONY: help venv install check compile test schema-check examples-check security-check
 
 help: ## List available targets
 	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z0-9_.-]+:.*##/ {printf "%-24s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+$(VENV_PYTHON):
+	$(PYTHON) -m venv $(VENV)
+
+venv: $(VENV_PYTHON) ## Create .venv and install the package in editable mode
+	$(VENV_PYTHON) -m pip install --upgrade pip setuptools wheel
+	$(VENV_PYTHON) -m pip install -e .
+
+install: $(VENV_PYTHON) ## Install or update the package in editable mode in .venv
+	$(VENV_PYTHON) -m pip install -e .
 
 check: compile test schema-check examples-check security-check ## Run canonical local validation
 
