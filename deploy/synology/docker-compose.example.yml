@@ -1,8 +1,7 @@
 services:
   publisher:
-    image: ghcr.io/example/trusted-network-registry:placeholder
+    image: trusted-network-registry:local
     command:
-      - trusted-network-registry
       - publish
       - --once
       - --config

@@ -3,7 +3,7 @@ VENV ?= .venv
 VENV_PYTHON := $(VENV)/bin/python
 PYTHONPATH := src
 
-.PHONY: help venv install check compile test schema-check examples-check security-check
+.PHONY: help venv install check compile test schema-check examples-check security-check docker-build
 
 help: ## List available targets
 	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z0-9_.-]+:.*##/ {printf "%-24s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -35,3 +35,6 @@ examples-check: ## Render example config and generated tfvars JSON
 
 security-check: ## Run local public-safety checks
 	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m unittest tests.unit.test_public_safety
+
+docker-build: ## Build the local publisher container image
+	docker build -t trusted-network-registry:local .
