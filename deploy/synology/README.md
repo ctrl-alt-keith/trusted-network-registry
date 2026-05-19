@@ -42,10 +42,33 @@ MERAKI_DASHBOARD_API_KEY=
 
 ## Compose Example
 
-Build the local image from the repository root:
+Check the NAS CPU architecture before building the local image:
 
 ```sh
-docker build -t trusted-network-registry:local .
+uname -m
+```
+
+Common Synology mappings are:
+
+```text
+x86_64  -> linux/amd64
+aarch64 -> linux/arm64
+```
+
+Build the local image from the repository root for the NAS architecture.
+
+For an `x86_64` NAS:
+
+```sh
+docker build --platform linux/amd64 \
+  -t trusted-network-registry:local .
+```
+
+For an `aarch64` NAS:
+
+```sh
+docker build --platform linux/arm64 \
+  -t trusted-network-registry:local .
 ```
 
 For first Synology use, load that image onto the NAS:
@@ -82,6 +105,11 @@ docker compose run --rm publisher
 The container logs to stdout/stderr and exits after one publish. Do not run it
 as a long-lived daemon.
 
+If the container fails with an `exec format error`, the image architecture
+usually does not match the NAS CPU architecture. Recheck `uname -m`, rebuild
+with the matching `--platform`, reload the image onto the NAS, and rerun the
+one-shot Compose command.
+
 ## First NAS Test Checklist
 
 1. Copy `docker-compose.example.yml` to a private NAS project directory and
@@ -90,10 +118,12 @@ as a long-lived daemon.
 3. Copy `publisher.env.example` to private `publisher.env`.
 4. Fill only `LINODE_OBJ_ACCESS_KEY`, `LINODE_OBJ_SECRET_KEY`, and
    `MERAKI_DASHBOARD_API_KEY` in `publisher.env`.
-5. Build and load the image as `trusted-network-registry:local`.
-6. Run the one-shot Compose command manually.
-7. Verify generated local output and the remote object.
-8. Only then schedule the same one-shot command in Synology Task Scheduler.
+5. Check the NAS architecture with `uname -m`.
+6. Build for the matching Docker platform and load the image as
+   `trusted-network-registry:local`.
+7. Run the one-shot Compose command manually.
+8. Verify generated local output and the remote object.
+9. Only then schedule the same one-shot command in Synology Task Scheduler.
 
 Do not commit edited `publisher.env`, generated registry JSON, or generated
 tfvars JSON.
