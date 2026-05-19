@@ -48,6 +48,14 @@ secrets.
 
 ## Quick Start
 
+Create and activate the local Python environment:
+
+```sh
+make venv
+. .venv/bin/activate
+make check
+```
+
 Create a local config:
 
 ```sh
@@ -58,7 +66,7 @@ cp examples/publisher-config.example.toml operator/publisher-config.toml
 Run the one-shot publisher:
 
 ```sh
-python -m trusted_network_registry.cli publish --once \
+trusted-network-registry publish --once \
   --config operator/publisher-config.toml \
   --output operator/generated/registry.json \
   --tfvars-output operator/generated/trusted-registry.auto.tfvars.json
@@ -88,8 +96,7 @@ instead of `meraki.fixture_path`, and provide the API key only through
 Validate the example registry:
 
 ```sh
-python -m trusted_network_registry.cli validate-registry \
-  examples/registry.example.json
+trusted-network-registry validate-registry examples/registry.example.json
 ```
 
 ## Validation

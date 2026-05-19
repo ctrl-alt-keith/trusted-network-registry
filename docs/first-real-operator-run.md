@@ -8,6 +8,14 @@ Do not commit real config, real IP addresses, Meraki organization IDs, network
 IDs, serials, device names, Object Storage bucket labels, endpoint URLs,
 object keys, generated registry payloads, generated tfvars, or secrets.
 
+Bootstrap a fresh local checkout before operator work:
+
+```sh
+make venv
+. .venv/bin/activate
+make check
+```
+
 ## Local Layout
 
 Recommended private layout:
