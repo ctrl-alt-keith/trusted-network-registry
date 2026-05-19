@@ -13,6 +13,7 @@ dist/
 operator/
 publisher-config.toml
 .env
+.envrc
 *.env
 !*.env.example
 *.local.toml

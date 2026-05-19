@@ -16,6 +16,29 @@ make venv
 make check
 ```
 
+Optional: keep a local `.envrc` for operator shell ergonomics. It is
+gitignored, should contain only local placeholders or secret-manager
+references, and is not required by the project.
+
+```bash
+# .envrc
+layout python .venv
+
+set -a
+source operator/publisher.env
+set +a
+```
+
+For a local 1Password operator shell, `.envrc` can instead load values through
+`op run`; this does not add a secret-manager dependency to the application.
+
+```bash
+# .envrc
+layout python .venv
+
+eval "$(op run --env-file=operator/publisher.env -- env | sed 's/^/export /')"
+```
+
 ## Local Layout
 
 Recommended private layout:

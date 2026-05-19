@@ -56,6 +56,28 @@ make venv
 make check
 ```
 
+Optional: use a local `.envrc` to auto-load `.venv` and operator environment
+variables. `.envrc` is gitignored and must remain local-only.
+
+```bash
+# .envrc
+layout python .venv
+
+set -a
+source operator/publisher.env
+set +a
+```
+
+For a local 1Password flow, `.envrc` can instead wrap `op run`; `direnv` and
+`op` remain optional operator tools, not project dependencies.
+
+```bash
+# .envrc
+layout python .venv
+
+eval "$(op run --env-file=operator/publisher.env -- env | sed 's/^/export /')"
+```
+
 Create a local config:
 
 ```sh
