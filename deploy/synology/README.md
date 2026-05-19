@@ -12,12 +12,33 @@ private image. GHCR or other official image publication is a follow-up.
 
 - Schedule a Synology task to run the container periodically.
 - Mount publisher config read-only.
-- Inject secrets through an env file or a Synology-supported secret mechanism.
+- Inject secrets through `publisher.env` at container execution time.
 - Write registry artifacts to a private output mount.
 - For Object Storage publishing, use `LINODE_OBJ_ACCESS_KEY` and
-  `LINODE_OBJ_SECRET_KEY` in the runtime env file and keep real bucket labels,
-  endpoint URLs, and object keys out of committed files.
+  `LINODE_OBJ_SECRET_KEY` in the runtime env file.
+- For live Meraki discovery, use `MERAKI_DASHBOARD_API_KEY` in the runtime env
+  file.
+- Do not put `LINODE_TOKEN` in `publisher.env`; it is for Terraform bucket
+  provisioning, not publisher container runtime.
+- Keep real bucket labels, endpoint URLs, object keys, Meraki identifiers, and
+  secrets out of committed files.
 - Do not run a long-lived daemon for the MVP.
+
+## Runtime Secrets
+
+`publisher.env` is local-only on the NAS. It must not be committed, copied
+into the image, or checked into this repository.
+
+The Compose example passes `publisher.env` as runtime environment only. Secrets
+are not baked into the image, and they are not mounted as files unless the
+operator chooses a different secret pattern later. The image receives these
+values only when the container is executed:
+
+```env
+LINODE_OBJ_ACCESS_KEY=
+LINODE_OBJ_SECRET_KEY=
+MERAKI_DASHBOARD_API_KEY=
+```
 
 ## Compose Example
 
@@ -60,6 +81,19 @@ docker compose run --rm publisher
 
 The container logs to stdout/stderr and exits after one publish. Do not run it
 as a long-lived daemon.
+
+## First NAS Test Checklist
+
+1. Copy `docker-compose.example.yml` to a private NAS project directory and
+   edit it as needed for the local deployment.
+2. Copy `config.example.toml` to private `config.toml`.
+3. Copy `publisher.env.example` to private `publisher.env`.
+4. Fill only `LINODE_OBJ_ACCESS_KEY`, `LINODE_OBJ_SECRET_KEY`, and
+   `MERAKI_DASHBOARD_API_KEY` in `publisher.env`.
+5. Build and load the image as `trusted-network-registry:local`.
+6. Run the one-shot Compose command manually.
+7. Verify generated local output and the remote object.
+8. Only then schedule the same one-shot command in Synology Task Scheduler.
 
 Do not commit edited `publisher.env`, generated registry JSON, or generated
 tfvars JSON.
