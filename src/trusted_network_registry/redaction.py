@@ -28,6 +28,12 @@ FORBIDDEN_VALUE_PATTERNS = [
     re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b"),
     re.compile(r"https?://(?!example\.com\b|localhost\b)[^\s\"']+"),
 ]
+FORBIDDEN_TEXT_FIELD_RE = re.compile(
+    r"^\s*[\"']?(?P<field>"
+    + "|".join(re.escape(field) for field in sorted(FORBIDDEN_FIELD_NAMES))
+    + r")[\"']?\s*[:=]",
+    re.MULTILINE,
+)
 
 
 def assert_public_safe_document(document: Any) -> None:
@@ -58,6 +64,17 @@ def redact_sensitive_fields(document: Any) -> Any:
 
 def assert_public_safe_json_text(text: str) -> None:
     assert_public_safe_document(json.loads(text))
+
+
+def assert_public_safe_text(text: str, *, label: str = "text") -> None:
+    problems: list[str] = []
+    for match in FORBIDDEN_TEXT_FIELD_RE.finditer(text):
+        problems.append(f"{label} uses forbidden provider field: {match.group('field')}")
+    for pattern in FORBIDDEN_VALUE_PATTERNS:
+        if pattern.search(text):
+            problems.append(f"{label} contains unsafe-looking value")
+    if problems:
+        raise PublicSafetyError("; ".join(problems))
 
 
 def _walk(value: Any, path: str, problems: list[str]) -> None:
