@@ -5,6 +5,7 @@ import unittest
 from trusted_network_registry.redaction import (
     PublicSafetyError,
     assert_public_safe_document,
+    assert_public_safe_text,
     redact_sensitive_fields,
 )
 
@@ -28,6 +29,24 @@ class PublicSafetyTests(unittest.TestCase):
                     "networkId": "example-network",
                     "serial": "example-serial",
                 }
+            )
+
+    def test_operator_example_text_files_are_public_safe(self) -> None:
+        for path in [
+            ROOT / "examples/publisher-config.example.toml",
+            ROOT / "deploy/synology/config.example.toml",
+            ROOT / "deploy/synology/docker-compose.example.yml",
+            ROOT / "deploy/synology/publisher.env.example",
+        ]:
+            with self.subTest(path=path.name):
+                assert_public_safe_text(path.read_text(encoding="utf-8"), label=str(path))
+
+    def test_text_check_rejects_provider_identifiers_and_private_urls(self) -> None:
+        with self.assertRaises(PublicSafetyError):
+            assert_public_safe_text(
+                'organization_id = "example-organization"\n'
+                'endpoint_url = "https://private.example.invalid"\n',
+                label="operator config",
             )
 
     def test_redacts_sensitive_fields(self) -> None:
