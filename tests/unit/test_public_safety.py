@@ -17,6 +17,7 @@ class PublicSafetyTests(unittest.TestCase):
     def test_checked_examples_are_public_safe(self) -> None:
         for path in [
             ROOT / "examples/registry.example.json",
+            ROOT / "tests/fixtures/sanitized/registry.v1.example.json",
             ROOT / "tests/fixtures/sanitized/meraki-uplinks.example.json",
         ]:
             assert_public_safe_document(json.loads(path.read_text()))
