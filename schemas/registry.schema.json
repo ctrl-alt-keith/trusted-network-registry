@@ -1,7 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.com/schemas/trusted-network-registry/registry.schema.json",
+  "$id": "https://github.com/ctrl-alt-keith/trusted-network-registry/schemas/registry/v1/registry.schema.json",
   "title": "Trusted Network Registry v1",
+  "description": "Schema version 1 contract for the registry JSON artifact produced by trusted-network-registry.",
+  "$comment": "Producer: ctrl-alt-keith/trusted-network-registry. Artifact: registry JSON. Intended consumer: ctrl-alt-keith/linode-image-lab firewall-sync.",
   "type": "object",
   "required": ["schema_version", "registry", "entries", "summary"],
   "additionalProperties": false,
