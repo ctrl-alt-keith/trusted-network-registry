@@ -134,6 +134,8 @@ def validate_publisher_config(config: dict[str, Any]) -> None:
         network = ipaddress.ip_network(entry["cidr"], strict=False)
         _reject_universal_cidr(network, f"static_entries[{index}].cidr")
         _non_empty_string(entry["source_ref"], f"static_entries[{index}].source_ref")
+        if entry.get("status", "active") not in ENTRY_STATUSES:
+            raise SchemaError(f"static_entries[{index}].status must be active or inactive")
 
     meraki = config.get("meraki", {})
     if meraki and not isinstance(meraki, dict):

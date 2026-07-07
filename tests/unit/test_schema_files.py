@@ -122,6 +122,24 @@ class SchemaFileTests(unittest.TestCase):
 
                 self.assertIn("universal allow CIDR", str(raised.exception))
 
+    def test_static_entry_status_must_be_supported(self) -> None:
+        with self.assertRaises(SchemaError) as raised:
+            validate_publisher_config(
+                {
+                    "static_entries": [
+                        {
+                            "id": "admin-static-example",
+                            "cidr": "198.51.100.42/24",
+                            "source_ref": "static-admin",
+                            "status": "pending",
+                        }
+                    ],
+                    "publish": {"local_path": "registry.json"},
+                }
+            )
+
+        self.assertIn("static_entries[0].status", str(raised.exception))
+
     def test_live_meraki_config_requires_organization_or_fixture(self) -> None:
         validate_publisher_config(
             {
