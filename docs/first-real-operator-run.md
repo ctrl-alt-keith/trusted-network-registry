@@ -115,6 +115,17 @@ object_key = "<private-object-key>"
 
 For a dry local shape check before live discovery, temporarily use sanitized
 static entries or a sanitized fixture. Do not commit the edited local config.
+Static entries require `id`, `cidr`, and `source_ref`. `status` is optional,
+defaults to `active` when omitted, and must be either `active` or `inactive`
+when set:
+
+```toml
+[[static_entries]]
+id = "admin-static-example"
+cidr = "198.51.100.42/32"
+source_ref = "static-admin"
+status = "active"
+```
 
 ## 3. Load Credentials
 
