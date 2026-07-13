@@ -12,6 +12,11 @@ The command validates the generated registry before writing it. If configured,
 it also writes generated tfvars JSON for Terraform consumers. Generated CIDR
 lists may contain both IPv4 and IPv6 entries.
 
+Before discovery or rendering, the publisher verifies that the config file,
+registry output, and generated tfvars output point at distinct files. This
+prevents a typo from overwriting the private config or making one generated
+artifact clobber another.
+
 Keep private operator files under `operator/`, including
 `operator/publisher-config.toml`, `operator/publisher.env`, generated registry
 JSON, and generated tfvars JSON. That directory is intentionally ignored by

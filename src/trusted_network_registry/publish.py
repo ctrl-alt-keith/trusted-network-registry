@@ -34,6 +34,12 @@ def publish_once(
     object_storage_uploader: ObjectStorageUploader | None = None,
 ) -> dict[str, Any]:
     config = load_publisher_config(config_path)
+    target_output, target_tfvars = _resolve_publish_output_paths(
+        config_path=config_path,
+        config=config,
+        output_path=output_path,
+        tfvars_output_path=tfvars_output_path,
+    )
     generated_at = parse_timestamp(generated_at_text) if generated_at_text else utc_now()
     valid_until = generated_at + timedelta(seconds=config.ttl_seconds)
 
@@ -66,12 +72,8 @@ def publish_once(
     )
     validate_registry_document(registry)
 
-    target_output = output_path or _default_output_path(config_path, config)
     _write_json(target_output, registry)
 
-    target_tfvars = tfvars_output_path
-    if target_tfvars is None and config.publish.tfvars_path:
-        target_tfvars = _resolve_relative(config_path, config.publish.tfvars_path)
     if target_tfvars is not None:
         _write_json(target_tfvars, render_tfvars(registry))
 
@@ -97,6 +99,49 @@ def render_tfvars(registry: dict[str, Any]) -> dict[str, Any]:
 
 def _default_output_path(config_path: Path, config: PublisherConfig) -> Path:
     return _resolve_relative(config_path, config.publish.local_path)
+
+
+def _resolve_publish_output_paths(
+    *,
+    config_path: Path,
+    config: PublisherConfig,
+    output_path: Path | None,
+    tfvars_output_path: Path | None,
+) -> tuple[Path, Path | None]:
+    target_output = output_path or _default_output_path(config_path, config)
+    target_tfvars = tfvars_output_path
+    if target_tfvars is None and config.publish.tfvars_path:
+        target_tfvars = _resolve_relative(config_path, config.publish.tfvars_path)
+    _reject_publish_path_collisions(config_path, target_output, target_tfvars)
+    return target_output, target_tfvars
+
+
+def _reject_publish_path_collisions(
+    config_path: Path,
+    output_path: Path,
+    tfvars_output_path: Path | None,
+) -> None:
+    paths = [
+        ("publisher config", config_path),
+        ("registry output", output_path),
+    ]
+    if tfvars_output_path is not None:
+        paths.append(("tfvars output", tfvars_output_path))
+
+    seen: dict[Path, str] = {}
+    collisions: list[str] = []
+    for label, path in paths:
+        resolved = path.resolve(strict=False)
+        previous = seen.get(resolved)
+        if previous is None:
+            seen[resolved] = label
+        else:
+            collisions.append(f"{previous} and {label}")
+
+    if collisions:
+        raise ValueError(
+            "publish paths must be distinct: " + "; ".join(collisions)
+        )
 
 
 def _upload_to_object_storage(
