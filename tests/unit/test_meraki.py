@@ -192,6 +192,30 @@ class MerakiTests(unittest.TestCase):
         )
         self.assertEqual(first_request.get_header("Authorization"), "Bearer example-api-key")
 
+    def test_live_discovery_stops_at_page_limit(self) -> None:
+        next_link = (
+            "</api/v1/organizations/example-org/devices/uplinks/addresses/"
+            'byDevice?startingAfter=next-page>; rel="next"'
+        )
+        requests = []
+
+        def fake_urlopen(request, timeout):
+            requests.append((request, timeout))
+            return _FakeResponse([], link=next_link)
+
+        with (
+            patch("trusted_network_registry.discovery.meraki.MAX_PAGES", 2),
+            patch("trusted_network_registry.discovery.meraki.urlopen", fake_urlopen),
+            self.assertRaises(MerakiDiscoveryError) as raised,
+        ):
+            fetch_meraki_uplinks_by_device(
+                organization_id="example-org",
+                api_key="example-api-key",
+            )
+
+        self.assertEqual(len(requests), 2)
+        self.assertIn("pagination exceeded the page limit", str(raised.exception))
+
     def test_live_discovery_accepts_same_origin_absolute_next_page(self) -> None:
         first_link = (
             f"<{DASHBOARD_API_BASE_URL}/organizations/example-org/devices/uplinks/"
