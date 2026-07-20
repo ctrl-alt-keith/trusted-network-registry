@@ -85,7 +85,6 @@ export MERAKI_DASHBOARD_API_KEY="$(op read 'op://<vault>/<item>/<field>')"
 Create a local config:
 
 ```sh
-mkdir -p operator/generated
 cp examples/publisher-config.example.toml operator/publisher-config.toml
 ```
 
@@ -101,6 +100,10 @@ trusted-network-registry publish --once \
 The `operator/` directory is local-only and ignored by Git. Keep edited
 publisher config, env files, generated registry JSON, and generated tfvars
 private.
+
+The publisher creates missing parent directories for `--output`,
+`--tfvars-output`, and the configured local output path. You do not need to
+pre-create `operator/generated/` before running `publish --once`.
 
 To publish to Object Storage, set `publish.target = "object_storage"` and
 provide only the private bucket label, HTTPS S3 endpoint URL, region, and
