@@ -96,6 +96,26 @@ class RegistryTests(unittest.TestCase):
                 "2026-05-17T01:00:00Z",
             )
 
+    def test_publish_once_creates_missing_parent_directories_for_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "operator" / "generated" / "registry.json"
+            tfvars = Path(tmp) / "operator" / "generated" / "trusted-registry.auto.tfvars.json"
+
+            registry = publish_once(
+                config_path=ROOT / "examples/publisher-config.example.toml",
+                output_path=output,
+                tfvars_output_path=tfvars,
+                generated_at_text="2026-05-17T00:00:00Z",
+            )
+
+            self.assertTrue(output.exists())
+            self.assertTrue(tfvars.exists())
+            self.assertEqual(json.loads(output.read_text()), registry)
+            self.assertEqual(
+                json.loads(tfvars.read_text())["trusted_registry"]["registry"]["generated_at"],
+                "2026-05-17T00:00:00Z",
+            )
+
     def test_publish_once_rejects_output_path_that_matches_config(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             config_path = Path(tmp) / "publisher-config.toml"
