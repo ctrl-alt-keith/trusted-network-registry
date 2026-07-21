@@ -8,11 +8,16 @@ from trusted_network_registry.schema import (
     ENTRY_REQUIRED,
     ENTRY_KINDS,
     ENTRY_STATUSES,
+    MERAKI_CONFIG_KEYS,
+    PUBLISH_CONFIG_KEYS,
     PUBLISH_TARGETS,
+    PUBLISHER_CONFIG_KEYS,
+    REGISTRY_CONFIG_KEYS,
     REGISTRY_META_REQUIRED,
     REGISTRY_REQUIRED,
     SchemaError,
     SOURCE_TYPES,
+    STATIC_ENTRY_CONFIG_KEYS,
     validate_publisher_config,
     validate_registry_document,
 )
@@ -60,11 +65,60 @@ class SchemaFileTests(unittest.TestCase):
         self.assertEqual(set(publish_properties["target"]["enum"]), PUBLISH_TARGETS)
         self.assertEqual(set(static_properties["status"]["enum"]), ENTRY_STATUSES)
 
+    def test_publisher_config_schema_properties_match_runtime_validator(self) -> None:
+        schema = json.loads((ROOT / "schemas/publisher-config.schema.json").read_text())
+        properties = schema["properties"]
+
+        self.assertEqual(set(properties), PUBLISHER_CONFIG_KEYS)
+        self.assertEqual(set(properties["registry"]["properties"]), REGISTRY_CONFIG_KEYS)
+        self.assertEqual(
+            set(properties["static_entries"]["items"]["properties"]),
+            STATIC_ENTRY_CONFIG_KEYS,
+        )
+        self.assertEqual(set(properties["meraki"]["properties"]), MERAKI_CONFIG_KEYS)
+        self.assertEqual(set(properties["publish"]["properties"]), PUBLISH_CONFIG_KEYS)
+
     def test_publisher_config_example_loads(self) -> None:
         config = load_publisher_config(ROOT / "examples/publisher-config.example.toml")
 
         self.assertEqual(config.registry_name, "trusted-network-registry")
         self.assertEqual(config.ttl_seconds, 3600)
+
+    def test_publisher_config_rejects_unknown_properties(self) -> None:
+        cases = (
+            ({"publsih": {}}, "publisher config has unknown keys: publsih"),
+            (
+                {"registry": {"ttl_second": 3600}},
+                "registry config has unknown keys: ttl_second",
+            ),
+            (
+                {
+                    "static_entries": [
+                        {
+                            "id": "admin-static-example",
+                            "cidr": "198.51.100.42/24",
+                            "source_ref": "static-admin",
+                            "state": "active",
+                        }
+                    ]
+                },
+                "static_entries[0] has unknown keys: state",
+            ),
+            (
+                {"meraki": {"enabled": False, "organisation_id": "example"}},
+                "meraki config has unknown keys: organisation_id",
+            ),
+            (
+                {"publish": {"local_path": "registry.json", "targt": "local_file"}},
+                "publish config has unknown keys: targt",
+            ),
+        )
+
+        for config, message in cases:
+            with self.subTest(message=message):
+                with self.assertRaises(SchemaError) as raised:
+                    validate_publisher_config(config)
+                self.assertEqual(str(raised.exception), message)
 
     def test_object_storage_config_requires_minimal_upload_fields(self) -> None:
         with self.assertRaises(SchemaError):
