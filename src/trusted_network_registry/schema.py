@@ -29,6 +29,19 @@ SOURCE_TYPES = {"config", "meraki_uplink_addresses"}
 ENTRY_STATUSES = {"active", "inactive"}
 PUBLISH_TARGETS = {"local_file", "object_storage"}
 UNIVERSAL_CIDRS = {"0.0.0.0/0", "::/0"}
+PUBLISHER_CONFIG_KEYS = {"registry", "static_entries", "meraki", "publish"}
+REGISTRY_CONFIG_KEYS = {"name", "ttl_seconds"}
+STATIC_ENTRY_CONFIG_KEYS = {"id", "cidr", "source_ref", "status"}
+MERAKI_CONFIG_KEYS = {"enabled", "organization_id", "fixture_path"}
+PUBLISH_CONFIG_KEYS = {
+    "target",
+    "local_path",
+    "tfvars_path",
+    "object_key",
+    "bucket",
+    "endpoint_url",
+    "region",
+}
 
 
 def validate_rfc3339_z(value: str, field: str) -> datetime:
@@ -117,9 +130,11 @@ def validate_registry_document(document: dict[str, Any]) -> None:
 def validate_publisher_config(config: dict[str, Any]) -> None:
     if not isinstance(config, dict):
         raise SchemaError("publisher config must be an object")
+    _reject_unknown(config, PUBLISHER_CONFIG_KEYS, "publisher config")
     registry = config.get("registry", {})
     if not isinstance(registry, dict):
         raise SchemaError("registry config must be an object")
+    _reject_unknown(registry, REGISTRY_CONFIG_KEYS, "registry config")
     if registry.get("ttl_seconds", 3600) <= 0:
         raise SchemaError("registry.ttl_seconds must be positive")
 
@@ -129,6 +144,11 @@ def validate_publisher_config(config: dict[str, Any]) -> None:
     for index, entry in enumerate(static_entries):
         if not isinstance(entry, dict):
             raise SchemaError(f"static_entries[{index}] must be an object")
+        _reject_unknown(
+            entry,
+            STATIC_ENTRY_CONFIG_KEYS,
+            f"static_entries[{index}]",
+        )
         _require(entry, {"id", "cidr", "source_ref"}, f"static_entries[{index}]")
         _non_empty_string(entry["id"], f"static_entries[{index}].id")
         network = ipaddress.ip_network(entry["cidr"], strict=False)
@@ -140,6 +160,7 @@ def validate_publisher_config(config: dict[str, Any]) -> None:
     meraki = config.get("meraki", {})
     if meraki and not isinstance(meraki, dict):
         raise SchemaError("meraki config must be an object")
+    _reject_unknown(meraki, MERAKI_CONFIG_KEYS, "meraki config")
     if meraki.get("enabled", False):
         has_fixture = bool(meraki.get("fixture_path"))
         has_organization = bool(meraki.get("organization_id"))
@@ -152,6 +173,7 @@ def validate_publisher_config(config: dict[str, Any]) -> None:
     publish = config.get("publish", {})
     if publish and not isinstance(publish, dict):
         raise SchemaError("publish config must be an object")
+    _reject_unknown(publish, PUBLISH_CONFIG_KEYS, "publish config")
     target = publish.get("target", "local_file")
     if target not in PUBLISH_TARGETS:
         raise SchemaError("publish.target must be local_file or object_storage")
@@ -171,6 +193,12 @@ def _require(document: dict[str, Any], keys: set[str], label: str) -> None:
     missing = sorted(keys - set(document))
     if missing:
         raise SchemaError(f"{label} missing required keys: {', '.join(missing)}")
+
+
+def _reject_unknown(document: dict[str, Any], keys: set[str], label: str) -> None:
+    unknown = sorted(set(document) - keys)
+    if unknown:
+        raise SchemaError(f"{label} has unknown keys: {', '.join(unknown)}")
 
 
 def _non_empty_string(value: Any, field: str) -> str:
