@@ -158,10 +158,13 @@ for the read-only uplink-address discovery endpoint.
 
 ## 4. Run One-Shot Publish Locally
 
-Create private output directories:
+The publisher creates missing parent directories for
+`operator/generated/registry.json` and
+`operator/generated/trusted-registry.auto.tfvars.json`. Create only the
+separate local verification directory you plan to use later:
 
 ```sh
-mkdir -p operator/generated operator/verify
+mkdir -p operator/verify
 ```
 
 Run the publisher once:
