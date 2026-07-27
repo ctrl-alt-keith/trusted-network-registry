@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
 
 from trusted_network_registry.config import StaticEntryConfig
 from trusted_network_registry.discovery.static import render_static_entries
@@ -115,6 +116,28 @@ class RegistryTests(unittest.TestCase):
                 json.loads(tfvars.read_text())["trusted_registry"]["registry"]["generated_at"],
                 "2026-05-17T00:00:00Z",
             )
+
+    def test_publish_once_preserves_previous_output_when_atomic_replace_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "registry.json"
+            previous_content = '{"status":"last-known-good"}\n'
+            output.write_text(previous_content, encoding="utf-8")
+
+            with (
+                mock.patch(
+                    "trusted_network_registry.publish.os.replace",
+                    side_effect=OSError("simulated replace failure"),
+                ),
+                self.assertRaisesRegex(OSError, "simulated replace failure"),
+            ):
+                publish_once(
+                    config_path=ROOT / "examples/publisher-config.example.toml",
+                    output_path=output,
+                    generated_at_text="2026-05-17T00:00:00Z",
+                )
+
+            self.assertEqual(output.read_text(encoding="utf-8"), previous_content)
+            self.assertEqual([], list(output.parent.glob(f".{output.name}.*")))
 
     def test_publish_once_rejects_output_path_that_matches_config(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
