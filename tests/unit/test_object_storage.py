@@ -103,6 +103,52 @@ class ObjectStorageTests(unittest.TestCase):
         self.assertIn("LINODE_OBJ_ACCESS_KEY", str(raised.exception))
         self.assertNotIn("placeholder-private-credential", str(raised.exception))
 
+    def test_upload_registry_payload_rejects_whitespace_credentials_before_client(self) -> None:
+        registry = json.loads((ROOT / "examples/registry.example.json").read_text())
+        publish = PublishConfig(
+            target="object_storage",
+            bucket="bucket-label-placeholder",
+            endpoint_url="https://example.com",
+            region="us-example-1",
+            object_key="registry/registry.json",
+        )
+
+        for name, environ in (
+            (
+                "LINODE_OBJ_ACCESS_KEY",
+                {
+                    "LINODE_OBJ_ACCESS_KEY": " \t ",
+                    "LINODE_OBJ_SECRET_KEY": "placeholder-private-credential",
+                },
+            ),
+            (
+                "LINODE_OBJ_SECRET_KEY",
+                {
+                    "LINODE_OBJ_ACCESS_KEY": "placeholder-access-credential",
+                    "LINODE_OBJ_SECRET_KEY": "\n ",
+                },
+            ),
+        ):
+            with self.subTest(name=name):
+                client_factory_calls: list[tuple[object, ...]] = []
+
+                def client_factory(*args: object) -> FakeS3Client:
+                    client_factory_calls.append(args)
+                    return FakeS3Client()
+
+                with self.assertRaisesRegex(
+                    ObjectStorageCredentialsError,
+                    f"missing required env var: {name}",
+                ):
+                    upload_registry_payload(
+                        registry=registry,
+                        publish=publish,
+                        environ=environ,
+                        client_factory=client_factory,
+                    )
+
+                self.assertEqual(client_factory_calls, [])
+
     def test_upload_registry_payload_reports_public_safe_failure(self) -> None:
         registry = json.loads((ROOT / "examples/registry.example.json").read_text())
 

@@ -106,7 +106,7 @@ def create_s3_client(
 
 def _required_env_value(environ: Mapping[str, str], name: str) -> str:
     value = environ.get(name)
-    if not value:
+    if not value or not value.strip():
         raise ObjectStorageCredentialsError(f"missing required env var: {name}")
     return value
 
