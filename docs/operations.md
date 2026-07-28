@@ -12,6 +12,10 @@ The command validates the generated registry before writing it. If configured,
 it also writes generated tfvars JSON for Terraform consumers. Generated CIDR
 lists may contain both IPv4 and IPv6 entries.
 
+Local registry and tfvars files are staged as complete sibling files and then
+atomically replace their destinations. A failed replacement leaves the prior
+file intact instead of exposing a partially written payload to consumers.
+
 Before discovery or rendering, the publisher verifies that the config file,
 registry output, and generated tfvars output point at distinct files. This
 prevents a typo from overwriting the private config or making one generated
