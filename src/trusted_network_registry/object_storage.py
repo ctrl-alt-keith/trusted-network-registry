@@ -112,6 +112,6 @@ def _required_env_value(environ: Mapping[str, str], name: str) -> str:
 
 
 def _required_config_value(value: str | None, name: str) -> str:
-    if not value:
+    if not value or not value.strip():
         raise ObjectStorageError(f"{name} is required for object_storage publishing")
     return value

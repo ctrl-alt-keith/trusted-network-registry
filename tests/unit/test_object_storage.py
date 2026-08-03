@@ -6,6 +6,7 @@ import unittest
 from trusted_network_registry.config import PublishConfig
 from trusted_network_registry.object_storage import (
     ObjectStorageCredentialsError,
+    ObjectStorageError,
     ObjectStorageUploadError,
     ObjectStorageUploadResult,
     upload_registry_payload,
@@ -102,6 +103,40 @@ class ObjectStorageTests(unittest.TestCase):
 
         self.assertIn("LINODE_OBJ_ACCESS_KEY", str(raised.exception))
         self.assertNotIn("placeholder-private-credential", str(raised.exception))
+
+    def test_upload_registry_payload_rejects_whitespace_config_before_client(self) -> None:
+        registry = json.loads((ROOT / "examples/registry.example.json").read_text())
+        base_values = {
+            "bucket": "bucket-label-placeholder",
+            "endpoint_url": "https://example.com",
+            "region": "us-example-1",
+            "object_key": "registry/registry.json",
+        }
+
+        for name in base_values:
+            with self.subTest(name=name):
+                values = base_values | {name: " \t "}
+                client_factory_calls: list[tuple[object, ...]] = []
+
+                def client_factory(*args: object) -> FakeS3Client:
+                    client_factory_calls.append(args)
+                    return FakeS3Client()
+
+                with self.assertRaisesRegex(
+                    ObjectStorageError,
+                    f"publish.{name} is required for object_storage publishing",
+                ):
+                    upload_registry_payload(
+                        registry=registry,
+                        publish=PublishConfig(target="object_storage", **values),
+                        environ={
+                            "LINODE_OBJ_ACCESS_KEY": "placeholder-access-credential",
+                            "LINODE_OBJ_SECRET_KEY": "placeholder-private-credential",
+                        },
+                        client_factory=client_factory,
+                    )
+
+                self.assertEqual(client_factory_calls, [])
 
     def test_upload_registry_payload_rejects_whitespace_credentials_before_client(self) -> None:
         registry = json.loads((ROOT / "examples/registry.example.json").read_text())
