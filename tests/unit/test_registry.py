@@ -77,6 +77,19 @@ class RegistryTests(unittest.TestCase):
 
                 self.assertIn("universal allow CIDR", str(raised.exception))
 
+    def test_discovered_entry_expiry_must_follow_observation(self) -> None:
+        for expires_at in ("2026-05-17T00:00:00Z", "2026-05-16T23:59:59Z"):
+            with self.subTest(expires_at=expires_at):
+                document = json.loads((ROOT / "examples/registry.example.json").read_text())
+                entry = next(item for item in document["entries"] if item["kind"] == "discovered")
+                entry["observed_at"] = "2026-05-17T00:00:00Z"
+                entry["expires_at"] = expires_at
+
+                with self.assertRaises(SchemaError) as raised:
+                    validate_registry_document(document)
+
+                self.assertIn("expires_at must be after observed_at", str(raised.exception))
+
     def test_publish_once_renders_registry_and_tfvars(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             output = Path(tmp) / "registry.json"
