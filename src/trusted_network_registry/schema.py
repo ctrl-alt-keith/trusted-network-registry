@@ -104,9 +104,20 @@ def validate_registry_document(document: dict[str, Any]) -> None:
             static_count += 1
         else:
             discovered_count += 1
+            timestamps: dict[str, datetime] = {}
             for field in ("observed_at", "expires_at"):
                 if field in entry:
-                    validate_rfc3339_z(entry[field], f"entries[{index}].{field}")
+                    timestamps[field] = validate_rfc3339_z(
+                        entry[field], f"entries[{index}].{field}"
+                    )
+            if (
+                "observed_at" in timestamps
+                and "expires_at" in timestamps
+                and timestamps["expires_at"] <= timestamps["observed_at"]
+            ):
+                raise SchemaError(
+                    f"entries[{index}].expires_at must be after observed_at"
+                )
 
         if entry["source_type"] not in SOURCE_TYPES:
             raise SchemaError(f"entries[{index}].source_type is not supported")
