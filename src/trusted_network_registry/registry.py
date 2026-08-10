@@ -28,7 +28,10 @@ def format_timestamp(value: datetime) -> str:
 def parse_timestamp(value: str) -> datetime:
     if not value.endswith("Z"):
         raise ValueError("timestamp must end in Z")
-    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        raise ValueError("timestamp must include a UTC time and timezone")
+    return parsed
 
 
 def render_registry(

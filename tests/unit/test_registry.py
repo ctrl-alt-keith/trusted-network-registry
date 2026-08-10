@@ -8,6 +8,7 @@ from unittest import mock
 from trusted_network_registry.config import StaticEntryConfig
 from trusted_network_registry.discovery.static import render_static_entries
 from trusted_network_registry.publish import publish_once, render_tfvars
+from trusted_network_registry.registry import parse_timestamp
 from trusted_network_registry.schema import SchemaError, validate_registry_document
 
 
@@ -15,6 +16,10 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class RegistryTests(unittest.TestCase):
+    def test_timestamp_parser_rejects_date_only_value(self) -> None:
+        with self.assertRaisesRegex(ValueError, "must include a UTC time and timezone"):
+            parse_timestamp("2026-05-17Z")
+
     def test_static_cidr_is_canonicalized(self) -> None:
         entries = render_static_entries(
             [
@@ -89,6 +94,13 @@ class RegistryTests(unittest.TestCase):
                     validate_registry_document(document)
 
                 self.assertIn("expires_at must be after observed_at", str(raised.exception))
+
+    def test_registry_rejects_date_only_utc_timestamp(self) -> None:
+        document = json.loads((ROOT / "examples/registry.example.json").read_text())
+        document["registry"]["generated_at"] = "2026-05-17Z"
+
+        with self.assertRaisesRegex(SchemaError, "must include a UTC time and timezone"):
+            validate_registry_document(document)
 
     def test_publish_once_renders_registry_and_tfvars(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

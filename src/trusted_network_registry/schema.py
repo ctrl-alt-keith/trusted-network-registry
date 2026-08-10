@@ -48,9 +48,12 @@ def validate_rfc3339_z(value: str, field: str) -> datetime:
     if not isinstance(value, str) or not value.endswith("Z"):
         raise SchemaError(f"{field} must be an RFC3339 UTC timestamp ending in Z")
     try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError as exc:
         raise SchemaError(f"{field} must be a valid RFC3339 timestamp") from exc
+    if parsed.tzinfo is None:
+        raise SchemaError(f"{field} must include a UTC time and timezone")
+    return parsed
 
 
 def validate_registry_document(document: dict[str, Any]) -> None:
