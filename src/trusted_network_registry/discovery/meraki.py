@@ -68,7 +68,13 @@ def fetch_meraki_uplinks_by_device(
 
     url = _uplinks_url(organization_id)
     devices: list[dict[str, Any]] = []
+    requested_urls: set[str] = set()
     for _ in range(MAX_PAGES):
+        if url in requested_urls:
+            raise MerakiDiscoveryError(
+                "Meraki Dashboard API pagination link repeats a previously requested page"
+            )
+        requested_urls.add(url)
         request = Request(
             url,
             headers={
