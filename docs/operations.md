@@ -67,7 +67,9 @@ For live Meraki discovery, configure `meraki.enabled = true` and
 `meraki.organization_id` in a private local config, omit `meraki.fixture_path`,
 and export `MERAKI_DASHBOARD_API_KEY` before running the one-shot publisher.
 The publisher calls only the read-only uplink-address endpoint and follows
-documented `Link` header pagination until no next page is present.
+documented `Link` header pagination until no next page is present. It fails
+before re-requesting a repeated page URL, so a malformed pagination cycle does
+not silently duplicate discovery requests.
 
 ## Rotation
 
