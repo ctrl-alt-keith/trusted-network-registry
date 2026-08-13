@@ -8,8 +8,6 @@ CONFIG_PATH="${CONFIG_PATH:-operator/publisher-config.toml}"
 OUTPUT_PATH="${OUTPUT_PATH:-operator/generated/registry.json}"
 TFVARS_OUTPUT_PATH="${TFVARS_OUTPUT_PATH:-operator/generated/trusted-registry.auto.tfvars.json}"
 
-mkdir -p "$(dirname "$OUTPUT_PATH")" "$(dirname "$TFVARS_OUTPUT_PATH")"
-
 # Optional 1Password form from the repo root after copying this helper:
 # op run --env-file=operator/publisher.env -- operator/run-local-publish.sh
 
