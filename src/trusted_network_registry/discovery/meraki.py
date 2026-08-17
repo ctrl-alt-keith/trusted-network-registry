@@ -135,7 +135,12 @@ def render_meraki_uplink_entries(
                 address = public.get("address")
                 if not isinstance(address, str) or not address.strip():
                     continue
-                parsed_address = ipaddress.ip_address(address.strip())
+                try:
+                    parsed_address = ipaddress.ip_address(address.strip())
+                except ValueError as exc:
+                    raise MerakiDiscoveryError(
+                        "Meraki uplink public address was invalid"
+                    ) from exc
                 prefix = 32 if parsed_address.version == 4 else 128
                 family = "ipv4" if parsed_address.version == 4 else "ipv6"
                 cidr = f"{parsed_address}/{prefix}"

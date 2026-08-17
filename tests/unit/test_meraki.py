@@ -94,6 +94,31 @@ class MerakiTests(unittest.TestCase):
 
         self.assertEqual(entries, [])
 
+    def test_rejects_malformed_public_address_without_echoing_provider_value(self) -> None:
+        malformed_address = "not-a-public-address"
+
+        with self.assertRaises(MerakiDiscoveryError) as raised:
+            render_meraki_uplink_entries(
+                [
+                    {
+                        "uplinks": [
+                            {
+                                "interface": "wan1",
+                                "addresses": [{"public": {"address": malformed_address}}],
+                            }
+                        ]
+                    }
+                ],
+                observed_at=datetime(2026, 5, 17, tzinfo=timezone.utc),
+                valid_until=datetime(2026, 5, 17, 1, tzinfo=timezone.utc),
+            )
+
+        self.assertEqual(
+            str(raised.exception),
+            "Meraki uplink public address was invalid",
+        )
+        self.assertNotIn(malformed_address, str(raised.exception))
+
     def test_enforces_generic_source_refs_only(self) -> None:
         entries = render_meraki_uplink_entries(
             [
