@@ -142,6 +142,28 @@ class RegistryTests(unittest.TestCase):
                 "2026-05-17T00:00:00Z",
             )
 
+    def test_publish_once_uses_configured_relative_tfvars_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path = Path(tmp) / "config" / "publisher-config.toml"
+            config_path.parent.mkdir()
+            config_path.write_text(
+                _publisher_config_text(
+                    local_path="generated/registry.json",
+                    tfvars_path="generated/trusted-registry.auto.tfvars.json",
+                ),
+                encoding="utf-8",
+            )
+
+            registry = publish_once(
+                config_path=config_path,
+                generated_at_text="2026-05-17T00:00:00Z",
+            )
+
+            output = config_path.parent / "generated" / "registry.json"
+            tfvars = config_path.parent / "generated" / "trusted-registry.auto.tfvars.json"
+            self.assertEqual(json.loads(output.read_text()), registry)
+            self.assertEqual(json.loads(tfvars.read_text())["trusted_registry"], registry)
+
     def test_publish_once_preserves_previous_output_when_atomic_replace_fails(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             output = Path(tmp) / "registry.json"
