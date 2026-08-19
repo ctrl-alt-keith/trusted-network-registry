@@ -70,6 +70,8 @@ The publisher calls only the read-only uplink-address endpoint and follows
 documented `Link` header pagination until no next page is present. It fails
 before re-requesting a repeated page URL, so a malformed pagination cycle does
 not silently duplicate discovery requests.
+If a provider-supplied public address is malformed, discovery fails without
+echoing that value in the error message.
 
 ## Rotation
 
