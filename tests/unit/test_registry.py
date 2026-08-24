@@ -68,6 +68,19 @@ class RegistryTests(unittest.TestCase):
         with self.assertRaises(SchemaError):
             validate_registry_document(document)
 
+    def test_malformed_registry_cidr_does_not_echo_value(self) -> None:
+        document = json.loads((ROOT / "examples/registry.example.json").read_text())
+        private_cidr = "10.23.45.67/not-a-prefix"
+        document["entries"][0]["cidr"] = private_cidr
+
+        with self.assertRaisesRegex(
+            SchemaError,
+            r"entries\[0\]\.cidr must be a valid CIDR",
+        ) as raised:
+            validate_registry_document(document)
+
+        self.assertNotIn(private_cidr, str(raised.exception))
+
     def test_static_registry_entries_reject_universal_cidrs(self) -> None:
         for cidr in ("0.0.0.0/0", "::/0"):
             with self.subTest(cidr=cidr):
