@@ -49,6 +49,27 @@ local_path = "registry.json"
         self.assertEqual(payload["status"], "error")
         self.assertIn("universal allow CIDR", payload["error"])
 
+    def test_validate_config_does_not_echo_malformed_cidr(self) -> None:
+        private_cidr = "10.23.45.67/not-a-prefix"
+        with tempfile.TemporaryDirectory() as tmp:
+            invalid_config = Path(tmp) / "publisher-config.toml"
+            invalid_config.write_text(
+                f'# malformed fixture\n\n[[static_entries]]\n'
+                f'id = "admin-static-example"\ncidr = "{private_cidr}"\n'
+                'source_ref = "static-admin"\n',
+                encoding="utf-8",
+            )
+
+            result = _run_cli(["validate-config", str(invalid_config)])
+
+        self.assertEqual(result.exit_code, 1)
+        payload = json.loads(result.stderr)
+        self.assertEqual(
+            payload["error"],
+            "static_entries[0].cidr must be a valid CIDR",
+        )
+        self.assertNotIn(private_cidr, result.stderr)
+
     def test_publish_invalid_generated_at_reports_json_error_without_outputs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             output = Path(tmp) / "registry.json"

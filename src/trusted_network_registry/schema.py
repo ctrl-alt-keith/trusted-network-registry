@@ -88,7 +88,7 @@ def validate_registry_document(document: dict[str, Any]) -> None:
             raise SchemaError(f"duplicate entry id: {entry_id}")
         ids.add(entry_id)
 
-        network = ipaddress.ip_network(entry["cidr"], strict=False)
+        network = _parse_network(entry["cidr"], f"entries[{index}].cidr")
         _reject_universal_cidr(network, f"entries[{index}].cidr")
         if entry["cidr"] != network.with_prefixlen:
             raise SchemaError(
@@ -165,7 +165,7 @@ def validate_publisher_config(config: dict[str, Any]) -> None:
         )
         _require(entry, {"id", "cidr", "source_ref"}, f"static_entries[{index}]")
         _non_empty_string(entry["id"], f"static_entries[{index}].id")
-        network = ipaddress.ip_network(entry["cidr"], strict=False)
+        network = _parse_network(entry["cidr"], f"static_entries[{index}].cidr")
         _reject_universal_cidr(network, f"static_entries[{index}].cidr")
         _non_empty_string(entry["source_ref"], f"static_entries[{index}].source_ref")
         if entry.get("status", "active") not in ENTRY_STATUSES:
@@ -219,6 +219,16 @@ def _non_empty_string(value: Any, field: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise SchemaError(f"{field} must be a non-empty string")
     return value
+
+
+def _parse_network(
+    value: Any,
+    field: str,
+) -> ipaddress.IPv4Network | ipaddress.IPv6Network:
+    try:
+        return ipaddress.ip_network(value, strict=False)
+    except (TypeError, ValueError) as exc:
+        raise SchemaError(f"{field} must be a valid CIDR") from exc
 
 
 def _reject_universal_cidr(

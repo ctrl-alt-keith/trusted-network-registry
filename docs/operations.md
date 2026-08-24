@@ -61,6 +61,10 @@ that payload to the configured object key with a private ACL. It does not
 create buckets, change bucket policies, make objects public, mutate firewalls,
 or run a reconciliation loop.
 
+Validation failures identify the affected CIDR field without echoing malformed
+CIDR values. This keeps operator error output from disclosing private network
+configuration.
+
 ## Live Meraki Discovery
 
 For live Meraki discovery, configure `meraki.enabled = true` and
