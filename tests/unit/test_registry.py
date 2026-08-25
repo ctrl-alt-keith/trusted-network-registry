@@ -240,6 +240,31 @@ class RegistryTests(unittest.TestCase):
             )
             self.assertFalse((Path(tmp) / "generated" / "registry.json").exists())
 
+    def test_publish_once_rejects_explicit_tfvars_path_that_matches_configured_output(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path = Path(tmp) / "config" / "publisher-config.toml"
+            config_path.parent.mkdir()
+            config_path.write_text(
+                _publisher_config_text(local_path="generated/registry.json"),
+                encoding="utf-8",
+            )
+            output_path = config_path.parent / "generated" / "registry.json"
+
+            with self.assertRaises(ValueError) as raised:
+                publish_once(
+                    config_path=config_path,
+                    tfvars_output_path=output_path,
+                    generated_at_text="2026-05-17T00:00:00Z",
+                )
+
+            self.assertIn(
+                "registry output and tfvars output",
+                str(raised.exception),
+            )
+            self.assertFalse(output_path.exists())
+
     def test_render_tfvars_extracts_active_cidrs(self) -> None:
         registry = json.loads((ROOT / "examples/registry.example.json").read_text())
         tfvars = render_tfvars(registry)
