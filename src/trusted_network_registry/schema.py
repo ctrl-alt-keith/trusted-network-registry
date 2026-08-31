@@ -124,6 +124,15 @@ def validate_registry_document(document: dict[str, Any]) -> None:
 
         if entry["source_type"] not in SOURCE_TYPES:
             raise SchemaError(f"entries[{index}].source_type is not supported")
+        if kind == "static" and entry["source_type"] != "config":
+            raise SchemaError(
+                f"entries[{index}].source_type must be config for static entries"
+            )
+        if kind == "discovered" and entry["source_type"] != "meraki_uplink_addresses":
+            raise SchemaError(
+                f"entries[{index}].source_type must be meraki_uplink_addresses "
+                "for discovered entries"
+            )
         _non_empty_string(entry["source_ref"], f"entries[{index}].source_ref")
         if entry["status"] not in ENTRY_STATUSES:
             raise SchemaError(f"entries[{index}].status must be active or inactive")

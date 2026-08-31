@@ -108,6 +108,31 @@ class RegistryTests(unittest.TestCase):
 
                 self.assertIn("expires_at must be after observed_at", str(raised.exception))
 
+    def test_registry_rejects_source_type_that_does_not_match_entry_kind(self) -> None:
+        document = json.loads((ROOT / "examples/registry.example.json").read_text())
+        document["entries"][0]["source_type"] = "meraki_uplink_addresses"
+
+        with self.assertRaisesRegex(
+            SchemaError,
+            r"entries\[0\]\.source_type must be config for static entries",
+        ):
+            validate_registry_document(document)
+
+        discovered_index = next(
+            index
+            for index, entry in enumerate(document["entries"])
+            if entry["kind"] == "discovered"
+        )
+        document["entries"][0]["source_type"] = "config"
+        document["entries"][discovered_index]["source_type"] = "config"
+
+        with self.assertRaisesRegex(
+            SchemaError,
+            rf"entries\[{discovered_index}\]\.source_type must be "
+            "meraki_uplink_addresses for discovered entries",
+        ):
+            validate_registry_document(document)
+
     def test_registry_rejects_date_only_utc_timestamp(self) -> None:
         document = json.loads((ROOT / "examples/registry.example.json").read_text())
         document["registry"]["generated_at"] = "2026-05-17Z"
