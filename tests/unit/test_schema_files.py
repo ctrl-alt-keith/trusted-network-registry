@@ -228,6 +228,23 @@ class SchemaFileTests(unittest.TestCase):
                 }
             )
 
+    def test_meraki_enabled_requires_boolean_value(self) -> None:
+        for enabled in ("false", 0, 1):
+            with self.subTest(enabled=enabled):
+                with self.assertRaisesRegex(
+                    SchemaError,
+                    "meraki.enabled must be a boolean",
+                ):
+                    validate_publisher_config(
+                        {
+                            "meraki": {
+                                "enabled": enabled,
+                                "fixture_path": "fixture.json",
+                            },
+                            "publish": {"local_path": "registry.json"},
+                        }
+                    )
+
     def test_registry_examples_validate(self) -> None:
         for path in (REGISTRY_EXAMPLE_PATH, REGISTRY_CONTRACT_FIXTURE_PATH):
             with self.subTest(path=path.name):
