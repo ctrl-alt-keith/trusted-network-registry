@@ -175,7 +175,10 @@ def validate_publisher_config(config: dict[str, Any]) -> None:
     if meraki and not isinstance(meraki, dict):
         raise SchemaError("meraki config must be an object")
     _reject_unknown(meraki, MERAKI_CONFIG_KEYS, "meraki config")
-    if meraki.get("enabled", False):
+    enabled = meraki.get("enabled", False)
+    if not isinstance(enabled, bool):
+        raise SchemaError("meraki.enabled must be a boolean")
+    if enabled:
         has_fixture = bool(meraki.get("fixture_path"))
         has_organization = bool(meraki.get("organization_id"))
         if has_fixture == has_organization:
