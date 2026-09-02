@@ -31,7 +31,9 @@ Each entry includes:
 - `cidr`: canonical IPv4 or IPv6 CIDR string.
 - `address_family`: `ipv4` or `ipv6`.
 - `kind`: `static` or `discovered`.
-- `source_type`: `config` or `meraki_uplink_addresses`.
+- `source_type`: `config` or `meraki_uplink_addresses`; the value is tied to
+  `kind`: static entries must use `config`, and discovered entries must use
+  `meraki_uplink_addresses`.
 - `source_ref`: generic operator-controlled reference.
 - `status`: `active` or `inactive`.
 
@@ -53,3 +55,7 @@ published enum values match the runtime validator constants, validates the
 checked-in examples with the runtime validator, and checks that the public-safe
 v1 fixture conforms to the published schema shape. The MVP does not add a
 `jsonschema` dependency only for local validation.
+
+Publisher configuration validation also requires `meraki.enabled` to be a TOML
+boolean when the `meraki` section is present; quoted strings such as `"false"`
+are rejected rather than interpreted as booleans.
