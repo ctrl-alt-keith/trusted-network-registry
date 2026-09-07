@@ -120,6 +120,31 @@ class SchemaFileTests(unittest.TestCase):
                     validate_publisher_config(config)
                 self.assertEqual(str(raised.exception), message)
 
+    def test_registry_ttl_must_be_a_positive_integer(self) -> None:
+        for ttl_seconds in ("3600", 1.5, True, False):
+            with self.subTest(ttl_seconds=ttl_seconds):
+                with self.assertRaisesRegex(
+                    SchemaError,
+                    "registry.ttl_seconds must be an integer",
+                ):
+                    validate_publisher_config(
+                        {
+                            "registry": {"ttl_seconds": ttl_seconds},
+                            "publish": {"local_path": "registry.json"},
+                        }
+                    )
+
+        with self.assertRaisesRegex(
+            SchemaError,
+            "registry.ttl_seconds must be positive",
+        ):
+            validate_publisher_config(
+                {
+                    "registry": {"ttl_seconds": 0},
+                    "publish": {"local_path": "registry.json"},
+                }
+            )
+
     def test_object_storage_config_requires_minimal_upload_fields(self) -> None:
         with self.assertRaises(SchemaError):
             validate_publisher_config({"publish": {"target": "object_storage"}})

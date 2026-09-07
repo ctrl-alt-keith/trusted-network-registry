@@ -158,7 +158,10 @@ def validate_publisher_config(config: dict[str, Any]) -> None:
     if not isinstance(registry, dict):
         raise SchemaError("registry config must be an object")
     _reject_unknown(registry, REGISTRY_CONFIG_KEYS, "registry config")
-    if registry.get("ttl_seconds", 3600) <= 0:
+    ttl_seconds = registry.get("ttl_seconds", 3600)
+    if not isinstance(ttl_seconds, int) or isinstance(ttl_seconds, bool):
+        raise SchemaError("registry.ttl_seconds must be an integer")
+    if ttl_seconds <= 0:
         raise SchemaError("registry.ttl_seconds must be positive")
 
     static_entries = config.get("static_entries", [])
