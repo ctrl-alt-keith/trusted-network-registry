@@ -145,6 +145,20 @@ class SchemaFileTests(unittest.TestCase):
                 }
             )
 
+    def test_registry_name_must_be_a_non_empty_string(self) -> None:
+        for name in ("", "   ", 123, None):
+            with self.subTest(name=name):
+                with self.assertRaisesRegex(
+                    SchemaError,
+                    "registry.name must be a non-empty string",
+                ):
+                    validate_publisher_config(
+                        {
+                            "registry": {"name": name},
+                            "publish": {"local_path": "registry.json"},
+                        }
+                    )
+
     def test_object_storage_config_requires_minimal_upload_fields(self) -> None:
         with self.assertRaises(SchemaError):
             validate_publisher_config({"publish": {"target": "object_storage"}})
