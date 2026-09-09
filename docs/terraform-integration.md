@@ -30,6 +30,8 @@ variable "trusted_admin_cidrs" {
 }
 ```
 
-Both examples expose `registry_valid_until` so callers can reject stale data
-before using CIDRs. Consumers should expect `trusted_admin_cidrs` to contain a
-mixed IPv4 and IPv6 list.
+Both examples expose an expiration timestamp so callers can reject stale data
+before using CIDRs: the local-file example reads `local.registry.registry.valid_until`,
+while the generated tfvars example receives `trusted_registry_valid_until`.
+Consumers should expect `trusted_admin_cidrs` to contain a mixed IPv4 and IPv6
+list.
