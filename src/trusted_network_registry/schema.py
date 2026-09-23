@@ -91,9 +91,7 @@ def validate_registry_document(document: dict[str, Any]) -> None:
         network = _parse_network(entry["cidr"], f"entries[{index}].cidr")
         _reject_universal_cidr(network, f"entries[{index}].cidr")
         if entry["cidr"] != network.with_prefixlen:
-            raise SchemaError(
-                f"entries[{index}].cidr must be canonical: {network.with_prefixlen}"
-            )
+            raise SchemaError(f"entries[{index}].cidr must be canonical")
         expected_family = "ipv4" if network.version == 4 else "ipv6"
         if entry["address_family"] not in ADDRESS_FAMILIES:
             raise SchemaError(f"entries[{index}].address_family is not supported")
