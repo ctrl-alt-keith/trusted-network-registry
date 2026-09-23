@@ -105,8 +105,8 @@ organization_id = "<private-meraki-organization-id>"
 
 [publish]
 target = "object_storage"
-local_path = "operator/generated/registry.json"
-tfvars_path = "operator/generated/trusted-registry.auto.tfvars.json"
+local_path = "generated/registry.json"
+tfvars_path = "generated/trusted-registry.auto.tfvars.json"
 bucket = "<private-bucket-label>"
 endpoint_url = "https://<s3-endpoint-hostname>"
 region = "<object-storage-region>"
