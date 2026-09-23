@@ -63,10 +63,17 @@ class RegistryTests(unittest.TestCase):
 
     def test_noncanonical_registry_fails(self) -> None:
         document = json.loads((ROOT / "examples/registry.example.json").read_text())
-        document["entries"][0]["cidr"] = "198.51.100.42/24"
+        cidr = "198.51.100.42/24"
+        document["entries"][0]["cidr"] = cidr
 
-        with self.assertRaises(SchemaError):
+        with self.assertRaisesRegex(
+            SchemaError,
+            r"entries\[0\]\.cidr must be canonical",
+        ) as raised:
             validate_registry_document(document)
+
+        self.assertNotIn(cidr, str(raised.exception))
+        self.assertNotIn("198.51.100.0/24", str(raised.exception))
 
     def test_malformed_registry_cidr_does_not_echo_value(self) -> None:
         document = json.loads((ROOT / "examples/registry.example.json").read_text())
