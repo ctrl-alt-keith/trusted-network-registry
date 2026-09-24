@@ -67,7 +67,6 @@ def main(argv: list[str] | None = None) -> int:
         ObjectStorageError,
         SchemaError,
         ValueError,
-        json.JSONDecodeError,
     ) as exc:
         print(json.dumps({"status": "error", "error": str(exc)}), file=sys.stderr)
         return 1
