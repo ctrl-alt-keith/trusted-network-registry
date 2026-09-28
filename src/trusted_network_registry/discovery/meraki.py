@@ -191,9 +191,10 @@ def _next_link(link_header: str | None, *, current_url: str) -> str | None:
         if "next" in rels:
             next_url = urljoin(current_url, pieces[0][1:-1])
             parsed = urlparse(next_url)
-            if parsed.scheme != "https" or parsed.netloc != expected.netloc:
+            if (parsed.scheme != "https" or parsed.netloc != expected.netloc
+                    or parsed.path != urlparse(current_url).path):
                 raise MerakiDiscoveryError(
-                    "Meraki Dashboard API pagination link must stay on the Dashboard API host"
+                    "Meraki Dashboard API pagination link must stay on the requested uplink endpoint"
                 )
             return next_url
     return None

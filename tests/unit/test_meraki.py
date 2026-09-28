@@ -306,6 +306,26 @@ class MerakiTests(unittest.TestCase):
 
         self.assertIn("pagination link", str(raised.exception))
 
+    def test_live_discovery_rejects_next_page_for_other_organization(self) -> None:
+        first_link = (
+            '<https://api.meraki.com/api/v1/organizations/other-org/devices/uplinks/'
+            'addresses/byDevice?startingAfter=page-1>; rel="next"'
+        )
+        requests = []
+
+        def fake_urlopen(request, timeout):
+            requests.append(request)
+            return _FakeResponse([{"uplinks": []}], link=first_link)
+
+        with patch("trusted_network_registry.discovery.meraki.urlopen", fake_urlopen):
+            with self.assertRaisesRegex(MerakiDiscoveryError, "pagination link"):
+                fetch_meraki_uplinks_by_device(
+                    organization_id="example-org",
+                    api_key="example-api-key",
+                )
+
+        self.assertEqual(len(requests), 1)
+
     def test_live_discovery_rejects_next_page_with_non_https_scheme(self) -> None:
         first_link = (
             '<http://api.meraki.com/api/v1/organizations/example-org/devices/uplinks/'
