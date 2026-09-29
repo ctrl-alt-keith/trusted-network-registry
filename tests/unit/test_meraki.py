@@ -73,6 +73,45 @@ class MerakiTests(unittest.TestCase):
 
         self.assertEqual(entries[0]["cidr"], "2001:db8::10/128")
 
+    def test_duplicate_addresses_and_device_order_keep_stable_unique_ids(self) -> None:
+        devices = [
+            {
+                "uplinks": [
+                    {
+                        "interface": "wan1",
+                        "addresses": [
+                            {"public": {"address": "203.0.113.20"}},
+                            {"public": {"address": "203.0.113.10"}},
+                        ],
+                    }
+                ]
+            },
+            {
+                "uplinks": [
+                    {
+                        "interface": "wan1",
+                        "addresses": [{"public": {"address": "203.0.113.10"}}],
+                    }
+                ]
+            },
+        ]
+        timestamps = {
+            "observed_at": datetime(2026, 5, 17, tzinfo=timezone.utc),
+            "valid_until": datetime(2026, 5, 17, 1, tzinfo=timezone.utc),
+        }
+
+        entries = render_meraki_uplink_entries(devices, **timestamps)
+        reordered_entries = render_meraki_uplink_entries(devices[::-1], **timestamps)
+
+        self.assertEqual(entries, reordered_entries)
+        self.assertEqual(
+            [(entry["id"], entry["cidr"]) for entry in entries],
+            [
+                ("meraki-wan1-ipv4-1", "203.0.113.10/32"),
+                ("meraki-wan1-ipv4-2", "203.0.113.20/32"),
+            ],
+        )
+
     def test_skips_stale_or_missing_uplink_public_addresses(self) -> None:
         entries = render_meraki_uplink_entries(
             [
