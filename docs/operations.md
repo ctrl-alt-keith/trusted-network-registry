@@ -8,6 +8,12 @@ Run exactly once:
 trusted-network-registry publish --once --config operator/publisher-config.toml
 ```
 
+Relative `meraki.fixture_path`, `publish.local_path`, and
+`publish.tfvars_path` values in the config are resolved from the config file's
+directory. Relative paths passed with `--output` or `--tfvars-output` are
+resolved from the process's working directory and override the corresponding
+configured output path.
+
 The command validates the generated registry before writing it. If configured,
 it also writes generated tfvars JSON for Terraform consumers. Generated CIDR
 lists may contain both IPv4 and IPv6 entries.
