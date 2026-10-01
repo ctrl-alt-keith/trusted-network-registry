@@ -43,25 +43,6 @@ def assert_public_safe_document(document: Any) -> None:
         raise PublicSafetyError("; ".join(problems))
 
 
-def redact_sensitive_fields(document: Any) -> Any:
-    if isinstance(document, dict):
-        redacted = {}
-        for key, value in document.items():
-            if key in FORBIDDEN_FIELD_NAMES:
-                redacted[key] = "[redacted]"
-            else:
-                redacted[key] = redact_sensitive_fields(value)
-        return redacted
-    if isinstance(document, list):
-        return [redact_sensitive_fields(item) for item in document]
-    if isinstance(document, str):
-        result = document
-        for pattern in FORBIDDEN_VALUE_PATTERNS:
-            result = pattern.sub("[redacted]", result)
-        return result
-    return document
-
-
 def assert_public_safe_json_text(text: str) -> None:
     assert_public_safe_document(json.loads(text))
 

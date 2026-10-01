@@ -6,7 +6,6 @@ from trusted_network_registry.redaction import (
     PublicSafetyError,
     assert_public_safe_document,
     assert_public_safe_text,
-    redact_sensitive_fields,
 )
 
 
@@ -49,18 +48,6 @@ class PublicSafetyTests(unittest.TestCase):
                 'endpoint_url = "https://private.example.invalid"\n',
                 label="operator config",
             )
-
-    def test_redacts_sensitive_fields(self) -> None:
-        redacted = redact_sensitive_fields(
-            {
-                "organizationId": "example-organization",
-                "nested": {"networkId": "example-network"},
-            }
-        )
-
-        self.assertEqual(redacted["organizationId"], "[redacted]")
-        self.assertEqual(redacted["nested"]["networkId"], "[redacted]")
-
 
 if __name__ == "__main__":
     unittest.main()
