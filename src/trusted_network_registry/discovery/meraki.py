@@ -114,26 +114,38 @@ def render_meraki_uplink_entries(
 ) -> list[dict[str, Any]]:
     discovered: set[tuple[str, str, str]] = set()
     for device in payload:
-        uplinks = device.get("uplinks") or []
-        if not isinstance(uplinks, list):
+        if not isinstance(device, dict):
+            raise MerakiDiscoveryError("Meraki uplink device record was malformed")
+        uplinks = device.get("uplinks")
+        if uplinks is None:
             continue
+        if not isinstance(uplinks, list):
+            raise MerakiDiscoveryError("Meraki uplinks must be a list")
         for uplink in uplinks:
             if not isinstance(uplink, dict):
-                continue
+                raise MerakiDiscoveryError("Meraki uplink record was malformed")
             source_ref = _safe_source_ref(uplink.get("interface", ""))
             if source_ref is None:
                 continue
-            addresses = uplink.get("addresses") or []
-            if not isinstance(addresses, list):
+            addresses = uplink.get("addresses")
+            if addresses is None:
                 continue
+            if not isinstance(addresses, list):
+                raise MerakiDiscoveryError("Meraki uplink addresses must be a list")
             for address_record in addresses:
                 if not isinstance(address_record, dict):
-                    continue
+                    raise MerakiDiscoveryError("Meraki uplink address record was malformed")
                 public = address_record.get("public", {})
-                if not isinstance(public, dict):
+                if public is None:
                     continue
+                if not isinstance(public, dict):
+                    raise MerakiDiscoveryError("Meraki uplink public address record was malformed")
                 address = public.get("address")
-                if not isinstance(address, str) or not address.strip():
+                if address is None:
+                    continue
+                if not isinstance(address, str):
+                    raise MerakiDiscoveryError("Meraki uplink public address must be a string")
+                if not address.strip():
                     continue
                 try:
                     parsed_address = ipaddress.ip_address(address.strip())

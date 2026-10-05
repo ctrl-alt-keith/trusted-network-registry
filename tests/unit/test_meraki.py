@@ -122,7 +122,10 @@ class MerakiTests(unittest.TestCase):
                     "uplinks": [
                         {
                             "interface": "wan2",
-                            "addresses": [{"public": {"address": None}}],
+                            "addresses": [
+                                {"public": {}},
+                                {"public": {"address": None}},
+                            ],
                         }
                     ]
                 },
@@ -157,6 +160,73 @@ class MerakiTests(unittest.TestCase):
             "Meraki uplink public address was invalid",
         )
         self.assertNotIn(malformed_address, str(raised.exception))
+
+    def test_rejects_non_string_public_address_without_partial_registry(self) -> None:
+        valid_device = {
+            "uplinks": [
+                {"interface": "wan1", "addresses": [{"public": {"address": "203.0.113.10"}}]}
+            ]
+        }
+        for malformed_address in (12345, {"private-device": "private-address"}):
+            with self.subTest(address_type=type(malformed_address).__name__):
+                with self.assertRaises(MerakiDiscoveryError) as raised:
+                    render_meraki_uplink_entries(
+                        [
+                            valid_device,
+                            {
+                                "uplinks": [
+                                    {
+                                        "interface": "wan2",
+                                        "addresses": [{"public": {"address": malformed_address}}],
+                                    }
+                                ]
+                            },
+                        ],
+                        observed_at=datetime(2026, 5, 17, tzinfo=timezone.utc),
+                        valid_until=datetime(2026, 5, 17, 1, tzinfo=timezone.utc),
+                    )
+                self.assertEqual(
+                    str(raised.exception),
+                    "Meraki uplink public address must be a string",
+                )
+                self.assertNotIn("private-", str(raised.exception))
+
+    def test_rejects_malformed_uplink_containers_without_partial_registry(self) -> None:
+        valid_device = {
+            "uplinks": [
+                {"interface": "wan1", "addresses": [{"public": {"address": "203.0.113.10"}}]}
+            ]
+        }
+        malformed = [
+            ("device", "private-device-name", "device record"),
+            ("uplinks", {"uplinks": "private-uplinks"}, "uplinks must be a list"),
+            ("uplink", {"uplinks": ["private-uplink"]}, "uplink record"),
+            (
+                "addresses",
+                {"uplinks": [{"interface": "wan1", "addresses": "private-addresses"}]},
+                "addresses must be a list",
+            ),
+            (
+                "address",
+                {"uplinks": [{"interface": "wan1", "addresses": ["private-address"]}]},
+                "address record",
+            ),
+            (
+                "public",
+                {"uplinks": [{"interface": "wan1", "addresses": [{"public": "private-public"}]}]},
+                "public address record",
+            ),
+        ]
+        for label, bad_device, expected in malformed:
+            with self.subTest(label=label):
+                with self.assertRaises(MerakiDiscoveryError) as raised:
+                    render_meraki_uplink_entries(
+                        [valid_device, bad_device],
+                        observed_at=datetime(2026, 5, 17, tzinfo=timezone.utc),
+                        valid_until=datetime(2026, 5, 17, 1, tzinfo=timezone.utc),
+                    )
+                self.assertIn(expected, str(raised.exception))
+                self.assertNotIn("private-", str(raised.exception))
 
     def test_enforces_generic_source_refs_only(self) -> None:
         entries = render_meraki_uplink_entries(
