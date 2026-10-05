@@ -141,7 +141,11 @@ def render_meraki_uplink_entries(
                 if not isinstance(public, dict):
                     raise MerakiDiscoveryError("Meraki uplink public address record was malformed")
                 address = public.get("address")
-                if not isinstance(address, str) or not address.strip():
+                if address is None:
+                    continue
+                if not isinstance(address, str):
+                    raise MerakiDiscoveryError("Meraki uplink public address must be a string")
+                if not address.strip():
                     continue
                 try:
                     parsed_address = ipaddress.ip_address(address.strip())
