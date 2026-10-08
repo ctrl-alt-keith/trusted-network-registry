@@ -79,6 +79,10 @@ if it can read an existing package or manifest. It does not run on branch
 pushes. A later manual dispatch from `main` is the **existing-package path**:
 it requires readable package metadata and a complete version-tag inventory,
 and refuses the target tag if present. An inaccessible package fails closed.
+Every push of the bootstrap tag, including a deleted and re-created tag,
+requires fresh absence evidence captured after all earlier bootstrap runs
+ended. If an earlier run reached `docker push`, treat the package as existing
+even if an inventory view has not refreshed yet.
 
 GHCR [makes a newly published package private by default](https://docs.github.com/packages/working-with-a-github-packages-registry/working-with-the-container-registry),
 so an organization package administrator must [set this package to public](https://docs.github.com/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility)
@@ -90,7 +94,10 @@ Its separate job has no package token and pulls `IMAGE@sha256:<hex>` on a fresh
 runner with an empty Docker credential directory; it checks the manifest and
 `linux/amd64` platform. This check is separate from the builder's cached
 layers. Do not treat the digest as ready for the LKE consumer until that job
-passes. Do not rerun publication against the same tag; a later source commit
+passes **and** the controller confirms that the verification tag's digest
+equals the publication run summary's pushed digest and that the verification
+job's recorded workflow commit equals the reviewed workflow commit. Do not
+rerun publication against the same tag; a later source commit
 needs its own reviewed publication change and unique SHA tag.
 
 ## Safe discovery and render qualification
