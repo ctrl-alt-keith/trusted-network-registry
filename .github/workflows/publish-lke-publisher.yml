@@ -1,0 +1,89 @@
+name: Publish LKE publisher image
+
+# This one-shot workflow is intentionally separate from the image source commit.
+# GitHub requires workflow_dispatch workflows to exist on the default branch.
+on:
+  workflow_dispatch:
+
+permissions:
+  packages: write
+
+concurrency:
+  group: publish-lke-publisher-sha-9cd00403ecae72f2757adcbc6b44b873231dc944
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    env:
+      SOURCE_SHA: 9cd00403ecae72f2757adcbc6b44b873231dc944
+      IMAGE: ghcr.io/ctrl-alt-keith/trusted-network-registry/lke-publisher
+      TAG: sha-9cd00403ecae72f2757adcbc6b44b873231dc944
+    steps:
+      - name: Build, push, and check anonymous pull
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = x86_64
+          package_api='https://api.github.com/orgs/ctrl-alt-keith/packages/container/trusted-network-registry%2Flke-publisher'
+
+          assert_tag_absent() {
+            local status tags
+            status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+              --header "Authorization: Bearer $GH_TOKEN" \
+              --header 'Accept: application/vnd.github+json' \
+              --header 'X-GitHub-Api-Version: 2022-11-28' \
+              "$package_api")"
+            case "$status" in
+              404) return 0 ;;
+              200)
+                tags="$(gh api --paginate \
+                  'orgs/ctrl-alt-keith/packages/container/trusted-network-registry%2Flke-publisher/versions?per_page=100' \
+                  --jq '.[] | .metadata.container.tags[]?')"
+                if grep -Fxq "$TAG" <<< "$tags"; then
+                  echo "Refusing to overwrite existing tag $IMAGE:$TAG" >&2
+                  exit 1
+                fi
+                ;;
+              *) echo "Cannot establish tag absence (package API HTTP $status)" >&2; exit 1 ;;
+            esac
+          }
+
+          assert_tag_absent
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          docker build --pull --platform linux/amd64 \
+            --file Dockerfile.lke \
+            --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
+            --label "org.opencontainers.image.revision=$SOURCE_SHA" \
+            --tag "$IMAGE:$TAG" \
+            "https://github.com/$GITHUB_REPOSITORY.git#$SOURCE_SHA"
+          docker run --rm --platform linux/amd64 --network none --read-only \
+            "$IMAGE:$TAG" --help >/dev/null
+          docker run --rm --platform linux/amd64 --network none --read-only \
+            --entrypoint python "$IMAGE:$TAG" \
+            -c 'import boto3, trusted_network_registry.cli'
+
+          # Recheck immediately before push, including after the build time.
+          assert_tag_absent
+          push_output="$(docker push "$IMAGE:$TAG")"
+          printf '%s\n' "$push_output"
+          digest="$(sed -nE 's/^.*digest: (sha256:[0-9a-f]{64}).*$/\1/p' <<< "$push_output" | tail -n 1)"
+          [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+
+          {
+            printf 'Source commit: %s\n' "$SOURCE_SHA"
+            printf 'Workflow commit: %s\n' "$GITHUB_SHA"
+            printf 'Workflow run: %s (attempt %s)\n' "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT"
+            printf 'Builder: %s (%s)\n' "$RUNNER_NAME" "$(docker version --format '{{.Server.Version}}')"
+            printf 'Image: %s@%s (linux/amd64)\n' "$IMAGE" "$digest"
+          } >> "$GITHUB_STEP_SUMMARY"
+          printf 'Pushed manifest: %s@%s\n' "$IMAGE" "$digest"
+
+          # An empty Docker auth configuration proves the digest is pullable
+          # without the workflow's package-writing token.
+          docker logout ghcr.io
+          anonymous_config="$(mktemp -d "$RUNNER_TEMP/ghcr-anonymous.XXXXXX")"
+          DOCKER_CONFIG="$anonymous_config" docker manifest inspect "$IMAGE@$digest" >/dev/null
+          DOCKER_CONFIG="$anonymous_config" docker pull --platform linux/amd64 "$IMAGE@$digest"
