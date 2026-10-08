@@ -11,7 +11,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 COPY requirements-lke.lock ./
 RUN python -m pip install --no-cache-dir --require-hashes -r requirements-lke.lock
 
-COPY src ./src
+COPY src/trusted_network_registry/*.py ./src/trusted_network_registry/
+COPY src/trusted_network_registry/discovery/*.py ./src/trusted_network_registry/discovery/
 
 ENTRYPOINT ["python", "-m", "trusted_network_registry.cli"]
 CMD ["--help"]

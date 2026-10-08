@@ -1,8 +1,0 @@
-# Limit bytes sent to the builder; private operator files are never build input.
-*
-!requirements-lke.lock
-!src/
-!src/trusted_network_registry/
-!src/trusted_network_registry/*.py
-!src/trusted_network_registry/discovery/
-!src/trusted_network_registry/discovery/*.py
