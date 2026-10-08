@@ -143,3 +143,4 @@ compile checks, unit tests, schema/example validation, and public-safety tests.
 - [First real operator run](docs/first-real-operator-run.md)
 - [Provider assumptions](docs/provider-assumptions.md)
 - [Operations](docs/operations.md)
+- [LKE publisher offline contract](docs/lke-publisher-offline.md)

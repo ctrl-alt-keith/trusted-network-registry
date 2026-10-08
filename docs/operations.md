@@ -13,6 +13,10 @@ Relative `meraki.fixture_path`, `publish.local_path`, and
 directory. Relative paths passed with `--output` or `--tfvars-output` are
 resolved from the process's working directory and override the corresponding
 configured output path.
+These overrides do not change `publish.target`; `--output` with an
+`object_storage` config still uploads. For local-only discovery and render
+qualification, use a separate private config with `publish.target =
+"local_file"` as described in [LKE publisher offline contract](lke-publisher-offline.md).
 
 The command validates the generated registry before writing it. If configured,
 it also writes generated tfvars JSON for Terraform consumers. Generated CIDR

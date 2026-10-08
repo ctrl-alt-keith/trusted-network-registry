@@ -1,0 +1,17 @@
+# Offline-qualified LKE image source. The deployed image digest is recorded by
+# the operator after building and pushing; this file does not claim one.
+FROM --platform=linux/amd64 python:3.11.14-slim-bookworm@sha256:83f339c1be6340ae1096010fdccf6552ac932d8f410d45d206014916bdf37e48
+
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app/src
+
+COPY requirements-lke.lock ./
+RUN python -m pip install --no-cache-dir --require-hashes -r requirements-lke.lock
+
+COPY src ./src
+
+ENTRYPOINT ["python", "-m", "trusted_network_registry.cli"]
+CMD ["--help"]
