@@ -84,21 +84,26 @@ requires fresh absence evidence captured after all earlier bootstrap runs
 ended. If an earlier run reached `docker push`, treat the package as existing
 even if an inventory view has not refreshed yet.
 
-GHCR [makes a newly published package private by default](https://docs.github.com/packages/working-with-a-github-packages-registry/working-with-the-container-registry),
-so an organization package administrator must [set this package to public](https://docs.github.com/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility)
-in GitHub's package settings after its first push. The publication run records
-the pushed digest and stops without claiming public readiness. After the
-visibility change, create and push
-`cak-364-verify-sha256-<pushed-manifest-digest-hex>` at the same workflow commit.
-Its separate job has no package token and pulls `IMAGE@sha256:<hex>` on a fresh
-runner with an empty Docker credential directory; it checks the manifest and
-`linux/amd64` platform. This check is separate from the builder's cached
-layers. Do not treat the digest as ready for the LKE consumer until that job
-passes **and** the controller confirms that the verification tag's digest
-equals the publication run summary's pushed digest and that the verification
-job's recorded workflow commit equals the reviewed workflow commit. Do not
-rerun publication against the same tag; a later source commit
-needs its own reviewed publication change and unique SHA tag.
+The first publication completed in [run 37839591842](https://github.com/ctrl-alt-keith/trusted-network-registry/actions/runs/37839591842)
+from workflow commit `74dbc58d35eb859831c9aea2232815fd520a8052`.
+It recorded the pushed manifest digest
+`sha256:580ec42339104bc799f2c949d45d2ebe51d0c6d76be088b99adb33cc281e8337`.
+The package remains private by operator decision. A credential-free manifest
+check returned `unauthorized`; no authenticated pull from the intended LKE
+access context has been qualified. [GitHub's Container registry documentation](https://docs.github.com/packages/working-with-a-github-packages-registry/working-with-the-container-registry)
+describes authentication for private package pulls. Before LKE uses this image,
+the integration owner must separately authorize and verify an authenticated
+pull of this exact digest with the intended runtime access. This document does
+not select or create those credentials.
+
+The workflow also contains an optional public-verification path for a future,
+separately authorized public package. If that decision changes, an organization
+package administrator can change visibility; only then may a
+`cak-364-verify-sha256-<pushed-manifest-digest-hex>` tag at the same workflow
+commit launch the tokenless fresh-runner manifest and `linux/amd64` pull check.
+That path is not a requirement for the current private image, and no such tag
+has been pushed. Do not rerun publication against the same tag; a later source
+commit needs its own reviewed publication change and unique SHA tag.
 
 ## Safe discovery and render qualification
 
