@@ -98,10 +98,6 @@ def render_tfvars(registry: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _default_output_path(config_path: Path, config: PublisherConfig) -> Path:
-    return _resolve_relative(config_path, config.publish.local_path)
-
-
 def _resolve_publish_output_paths(
     *,
     config_path: Path,
@@ -109,7 +105,9 @@ def _resolve_publish_output_paths(
     output_path: Path | None,
     tfvars_output_path: Path | None,
 ) -> tuple[Path, Path | None]:
-    target_output = output_path or _default_output_path(config_path, config)
+    target_output = output_path or _resolve_relative(
+        config_path, config.publish.local_path
+    )
     target_tfvars = tfvars_output_path
     if target_tfvars is None and config.publish.tfvars_path:
         target_tfvars = _resolve_relative(config_path, config.publish.tfvars_path)
