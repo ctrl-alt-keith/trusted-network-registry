@@ -41,6 +41,28 @@ jobs:
             mode=bootstrap
           fi
 
+          verify_bootstrap_evidence() {
+            local tag_dir tag_ref message
+            tag_dir="$(mktemp -d "$RUNNER_TEMP/cak364-bootstrap-tag.XXXXXX")"
+            tag_ref="refs/tags/$GITHUB_REF_NAME"
+            git -C "$tag_dir" init --quiet
+            git -C "$tag_dir" remote add origin "https://github.com/$GITHUB_REPOSITORY.git"
+            git -C "$tag_dir" fetch --quiet --depth=1 origin "$tag_ref:$tag_ref"
+            test "$(git -C "$tag_dir" cat-file -t "$tag_ref")" = tag
+            test "$(git -C "$tag_dir" rev-parse "$tag_ref^{commit}")" = "$GITHUB_SHA"
+            message="$(git -C "$tag_dir" cat-file -p "$tag_ref" | sed -n '/^$/,$p')"
+            grep -Fxq "CAK-364-Package: $IMAGE" <<< "$message"
+            grep -Fxq 'CAK-364-Absence-Decision: verified-absent' <<< "$message"
+            grep -Eq '^CAK-364-Absence-Evidence: id:[A-Za-z0-9_-]+$' <<< "$message"
+            grep -Eq '^CAK-364-Absence-Revision: [A-Za-z0-9]+$' <<< "$message"
+            grep -Eq '^CAK-364-Absence-Bytes: [1-9][0-9]*$' <<< "$message"
+            grep -Eq '^CAK-364-Absence-SHA256: [0-9a-f]{64}$' <<< "$message"
+          }
+
+          if [[ "$mode" == bootstrap ]]; then
+            verify_bootstrap_evidence
+          fi
+
           assert_tag_absent() {
             local status tags
             status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \

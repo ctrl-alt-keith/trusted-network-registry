@@ -54,7 +54,25 @@ tag, an organization package administrator must independently verify in the
 organization's package inventory that the exact target package does not
 exist. HTTP 404 from the job's package API is not proof of absence; it can
 also mean lack of access. Record that operator check with the publication
-decision. After reviewing the workflow commit, creating and pushing the unique tag
+decision in one issue-owned immutable evidence file with exact raw-byte
+readback, size, SHA-256, provider file ID and revision. Use an annotated tag
+whose message contains these exact lines with the verified values:
+
+```text
+CAK-364-Package: ghcr.io/ctrl-alt-keith/trusted-network-registry/lke-publisher
+CAK-364-Absence-Decision: verified-absent
+CAK-364-Absence-Evidence: id:<verified-file-id>
+CAK-364-Absence-Revision: <verified-revision>
+CAK-364-Absence-Bytes: <verified-byte-length>
+CAK-364-Absence-SHA256: <verified-sha256>
+```
+
+The workflow checks that this is an annotated tag at the running workflow
+commit and that the message carries the package and evidence identity. The
+controller must compare those values with the actual verified evidence before
+pushing; the workflow has no live access to the issue-owned provider. If that
+evidence or comparison is unavailable, do not push the tag. After reviewing
+the workflow commit, creating and pushing the unique tag
 `cak-364-publish-9cd00403ecae72f2757adcbc6b44b873231dc944` at that commit
 starts the bootstrap without merging the PR. The workflow refuses bootstrap
 if it can read an existing package or manifest. It does not run on branch
