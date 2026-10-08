@@ -1,8 +1,11 @@
 name: Publish LKE publisher image
 
 # This one-shot workflow is intentionally separate from the image source commit.
-# GitHub requires workflow_dispatch workflows to exist on the default branch.
+# A reviewed exact tag can launch it before merge; workflow_dispatch needs main.
 on:
+  push:
+    tags:
+      - cak-364-publish-9cd00403ecae72f2757adcbc6b44b873231dc944
   workflow_dispatch:
 
 permissions:
@@ -14,7 +17,9 @@ concurrency:
 
 jobs:
   publish:
-    if: github.ref == 'refs/heads/main'
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/tags/cak-364-publish-9cd00403ecae72f2757adcbc6b44b873231dc944') ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-24.04
     env:
       SOURCE_SHA: 9cd00403ecae72f2757adcbc6b44b873231dc944
