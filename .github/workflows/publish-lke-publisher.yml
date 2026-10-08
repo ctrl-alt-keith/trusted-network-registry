@@ -1,15 +1,15 @@
 name: Publish LKE publisher image
 
-# This one-shot workflow is intentionally separate from the image source commit.
-# A reviewed exact tag can launch it before merge; workflow_dispatch needs main.
+# Publication and later public verification are separate jobs and tag events.
+# A reviewed exact tag can launch publication before merge; dispatch needs main.
 on:
   push:
     tags:
       - cak-364-publish-9cd00403ecae72f2757adcbc6b44b873231dc944
+      - 'cak-364-verify-sha256-*'
   workflow_dispatch:
 
-permissions:
-  packages: write
+permissions: {}
 
 concurrency:
   group: publish-lke-publisher-sha-9cd00403ecae72f2757adcbc6b44b873231dc944
@@ -21,18 +21,25 @@ jobs:
       (github.event_name == 'push' && github.ref == 'refs/tags/cak-364-publish-9cd00403ecae72f2757adcbc6b44b873231dc944') ||
       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-24.04
+    permissions:
+      packages: write
     env:
       SOURCE_SHA: 9cd00403ecae72f2757adcbc6b44b873231dc944
       IMAGE: ghcr.io/ctrl-alt-keith/trusted-network-registry/lke-publisher
       TAG: sha-9cd00403ecae72f2757adcbc6b44b873231dc944
     steps:
-      - name: Build, push, and check anonymous pull
+      - name: Build and push exact source
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
           test "$(uname -m)" = x86_64
           package_api='https://api.github.com/orgs/ctrl-alt-keith/packages/container/trusted-network-registry%2Flke-publisher'
+          mode=existing
+          if [[ "$GITHUB_EVENT_NAME" == push ]]; then
+            mode=bootstrap
+          fi
 
           assert_tag_absent() {
             local status tags
@@ -41,23 +48,35 @@ jobs:
               --header 'Accept: application/vnd.github+json' \
               --header 'X-GitHub-Api-Version: 2022-11-28' \
               "$package_api")"
-            case "$status" in
-              404) return 0 ;;
-              200)
-                tags="$(gh api --paginate \
-                  'orgs/ctrl-alt-keith/packages/container/trusted-network-registry%2Flke-publisher/versions?per_page=100' \
-                  --jq '.[] | .metadata.container.tags[]?')"
-                if grep -Fxq "$TAG" <<< "$tags"; then
-                  echo "Refusing to overwrite existing tag $IMAGE:$TAG" >&2
-                  exit 1
-                fi
-                ;;
-              *) echo "Cannot establish tag absence (package API HTTP $status)" >&2; exit 1 ;;
-            esac
+            if [[ "$mode" == bootstrap ]]; then
+              case "$status" in
+                404) echo 'Bootstrap requires operator-verified package absence; HTTP 404 is not proof.' ;;
+                200) echo 'Refusing bootstrap: package already exists.' >&2; exit 1 ;;
+                *) echo "Refusing bootstrap: package API HTTP $status" >&2; exit 1 ;;
+              esac
+            else
+              if [[ "$status" != 200 ]]; then
+                echo "Cannot verify existing package and tag inventory (HTTP $status)" >&2
+                exit 1
+              fi
+              tags="$(gh api --paginate \
+                'orgs/ctrl-alt-keith/packages/container/trusted-network-registry%2Flke-publisher/versions?per_page=100' \
+                --jq '.[] | .metadata.container.tags[]?')"
+              if grep -Fxq "$TAG" <<< "$tags"; then
+                echo "Refusing to overwrite existing tag $IMAGE:$TAG" >&2
+                exit 1
+              fi
+            fi
+            # A positive registry result always refuses overwrite. A negative
+            # result is never treated as proof of absence by itself.
+            if docker manifest inspect "$IMAGE:$TAG" >/dev/null 2>&1; then
+              echo "Refusing to overwrite existing manifest $IMAGE:$TAG" >&2
+              exit 1
+            fi
           }
 
-          assert_tag_absent
           printf '%s' "$GH_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          assert_tag_absent
           docker build --pull --platform linux/amd64 \
             --file Dockerfile.lke \
             --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
@@ -86,9 +105,36 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           printf 'Pushed manifest: %s@%s\n' "$IMAGE" "$digest"
 
-          # An empty Docker auth configuration proves the digest is pullable
-          # without the workflow's package-writing token.
-          docker logout ghcr.io
+          echo 'Public anonymous verification is a separate fresh-runner tag event.'
+
+  verify-public:
+    if: >-
+      github.event_name == 'push' &&
+      startsWith(github.ref, 'refs/tags/cak-364-verify-sha256-')
+    runs-on: ubuntu-24.04
+    permissions: {}
+    env:
+      IMAGE: ghcr.io/ctrl-alt-keith/trusted-network-registry/lke-publisher
+    steps:
+      - name: Pull the published digest anonymously on a fresh runner
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = x86_64
+          digest_hex="${GITHUB_REF_NAME#cak-364-verify-sha256-}"
+          [[ "$digest_hex" =~ ^[0-9a-f]{64}$ ]]
+          digest="sha256:$digest_hex"
           anonymous_config="$(mktemp -d "$RUNNER_TEMP/ghcr-anonymous.XXXXXX")"
+          if DOCKER_CONFIG="$anonymous_config" docker image inspect "$IMAGE@$digest" >/dev/null 2>&1; then
+            echo 'Refusing verification with a locally cached image.' >&2
+            exit 1
+          fi
           DOCKER_CONFIG="$anonymous_config" docker manifest inspect "$IMAGE@$digest" >/dev/null
           DOCKER_CONFIG="$anonymous_config" docker pull --platform linux/amd64 "$IMAGE@$digest"
+          platform="$(docker image inspect --format '{{.Os}}/{{.Architecture}}' "$IMAGE@$digest")"
+          test "$platform" = linux/amd64
+          {
+            printf 'Anonymous image: %s@%s\n' "$IMAGE" "$digest"
+            printf 'Platform: %s\n' "$platform"
+            printf 'Workflow commit: %s\n' "$GITHUB_SHA"
+            printf 'Verification run: %s (attempt %s)\n' "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT"
+          } >> "$GITHUB_STEP_SUMMARY"

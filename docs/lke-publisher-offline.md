@@ -36,31 +36,44 @@ this contract does not claim byte-identical images from different builders.
 
 ## GHCR publication workflow
 
-`.github/workflows/publish-lke-publisher.yml` is a one-shot publication
-workflow for the already reviewed source commit
+`.github/workflows/publish-lke-publisher.yml` publishes the already reviewed
+source commit
 `9cd00403ecae72f2757adcbc6b44b873231dc944`. It builds that exact public Git
 commit rather than the commit containing the workflow, targets `linux/amd64`,
-and uses only the job's `packages: write` token. Its destination is
+and grants only `packages: write` to its publication job. Its destination is
 `ghcr.io/ctrl-alt-keith/trusted-network-registry/lke-publisher` with tag
-`sha-9cd00403ecae72f2757adcbc6b44b873231dc944`. It refuses an occupied tag
-before building and again before pushing. The run summary distinguishes the
-source commit, workflow commit, builder, and pushed manifest digest. A final
-pull with empty Docker credentials checks anonymous access to that digest.
+`sha-9cd00403ecae72f2757adcbc6b44b873231dc944`. The run summary
+distinguishes the source commit, workflow commit, builder, and pushed manifest
+digest. Publication reruns are refused.
 
 GitHub [requires a `workflow_dispatch` file on the default branch](https://docs.github.com/actions/managing-workflow-runs/manually-running-a-workflow)
 before it can be dispatched, but supports a [push trigger filtered to an exact
 tag](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onpushbranchestagsbranches-ignoretags-ignore).
-After reviewing the workflow commit, creating and pushing the unique tag
+The exact-tag event is the **first-package bootstrap**. Before creating the
+tag, an organization package administrator must independently verify in the
+organization's package inventory that the exact target package does not
+exist. HTTP 404 from the job's package API is not proof of absence; it can
+also mean lack of access. Record that operator check with the publication
+decision. After reviewing the workflow commit, creating and pushing the unique tag
 `cak-364-publish-9cd00403ecae72f2757adcbc6b44b873231dc944` at that commit
-starts this job without merging the PR. It does not run on branch pushes; a
-manual dispatch from `main` becomes available only after the workflow reaches
-`main`. GHCR [makes a newly published package private by default](https://docs.github.com/packages/working-with-a-github-packages-registry/working-with-the-container-registry),
+starts the bootstrap without merging the PR. The workflow refuses bootstrap
+if it can read an existing package or manifest. It does not run on branch
+pushes. A later manual dispatch from `main` is the **existing-package path**:
+it requires readable package metadata and a complete version-tag inventory,
+and refuses the target tag if present. An inaccessible package fails closed.
+
+GHCR [makes a newly published package private by default](https://docs.github.com/packages/working-with-a-github-packages-registry/working-with-the-container-registry),
 so an organization package administrator must [set this package to public](https://docs.github.com/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility)
-in GitHub's package settings after its first push. The anonymous-pull
-step will fail until that setting is public. Do not treat a pushed digest as
-ready for the LKE consumer until the anonymous pull passes. Do not rerun a push
-against the same tag; a later source commit needs its own reviewed publication
-change and unique SHA tag.
+in GitHub's package settings after its first push. The publication run records
+the pushed digest and stops without claiming public readiness. After the
+visibility change, create and push
+`cak-364-verify-sha256-<pushed-manifest-digest-hex>` at the same workflow commit.
+Its separate job has no package token and pulls `IMAGE@sha256:<hex>` on a fresh
+runner with an empty Docker credential directory; it checks the manifest and
+`linux/amd64` platform. This check is separate from the builder's cached
+layers. Do not treat the digest as ready for the LKE consumer until that job
+passes. Do not rerun publication against the same tag; a later source commit
+needs its own reviewed publication change and unique SHA tag.
 
 ## Safe discovery and render qualification
 
