@@ -1,32 +1,34 @@
 name: Publish LKE publisher image
 
 # Publication and later public verification are separate jobs and tag events.
-# A reviewed exact tag can launch publication before merge; dispatch needs main.
+# A reviewed exact tag can publish to the existing private package before merge;
+# dispatch needs main.
 on:
   push:
     tags:
-      - cak-364-publish-9cd00403ecae72f2757adcbc6b44b873231dc944
+      - cak-364-publish-8781f32ba1b0fcb2b91d190a5a603b637cccca05
       - 'cak-364-verify-sha256-*'
   workflow_dispatch:
 
 permissions: {}
 
 concurrency:
-  group: publish-lke-publisher-sha-9cd00403ecae72f2757adcbc6b44b873231dc944
+  group: publish-lke-publisher-sha-8781f32ba1b0fcb2b91d190a5a603b637cccca05
   cancel-in-progress: false
 
 jobs:
   publish:
     if: >-
-      (github.event_name == 'push' && github.ref == 'refs/tags/cak-364-publish-9cd00403ecae72f2757adcbc6b44b873231dc944') ||
+      (github.event_name == 'push' && github.ref == 'refs/tags/cak-364-publish-8781f32ba1b0fcb2b91d190a5a603b637cccca05') ||
       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-24.04
     permissions:
       packages: write
     env:
-      SOURCE_SHA: 9cd00403ecae72f2757adcbc6b44b873231dc944
+      SOURCE_SHA: 8781f32ba1b0fcb2b91d190a5a603b637cccca05
       IMAGE: ghcr.io/ctrl-alt-keith/trusted-network-registry/lke-publisher
-      TAG: sha-9cd00403ecae72f2757adcbc6b44b873231dc944
+      TAG: sha-8781f32ba1b0fcb2b91d190a5a603b637cccca05
+      PRIOR_TAG: sha-9cd00403ecae72f2757adcbc6b44b873231dc944
     steps:
       - name: Build and push exact source
         env:
@@ -36,33 +38,6 @@ jobs:
           test "$GITHUB_RUN_ATTEMPT" = 1
           test "$(uname -m)" = x86_64
           package_api='https://api.github.com/orgs/ctrl-alt-keith/packages/container/trusted-network-registry%2Flke-publisher'
-          mode=existing
-          if [[ "$GITHUB_EVENT_NAME" == push ]]; then
-            mode=bootstrap
-          fi
-
-          verify_bootstrap_evidence() {
-            local tag_dir tag_ref message
-            tag_dir="$(mktemp -d "$RUNNER_TEMP/cak364-bootstrap-tag.XXXXXX")"
-            tag_ref="refs/tags/$GITHUB_REF_NAME"
-            git -C "$tag_dir" init --quiet
-            git -C "$tag_dir" remote add origin "https://github.com/$GITHUB_REPOSITORY.git"
-            git -C "$tag_dir" fetch --quiet --depth=1 origin "$tag_ref:$tag_ref"
-            test "$(git -C "$tag_dir" cat-file -t "$tag_ref")" = tag
-            test "$(git -C "$tag_dir" rev-parse "$tag_ref^{commit}")" = "$GITHUB_SHA"
-            message="$(git -C "$tag_dir" cat-file -p "$tag_ref" | sed -n '/^$/,$p')"
-            grep -Fxq "CAK-364-Package: $IMAGE" <<< "$message"
-            grep -Fxq 'CAK-364-Absence-Decision: verified-absent' <<< "$message"
-            grep -Eq '^CAK-364-Absence-Evidence: id:[A-Za-z0-9_-]+$' <<< "$message"
-            grep -Eq '^CAK-364-Absence-Revision: [A-Za-z0-9]+$' <<< "$message"
-            grep -Eq '^CAK-364-Absence-Bytes: [1-9][0-9]*$' <<< "$message"
-            grep -Eq '^CAK-364-Absence-SHA256: [0-9a-f]{64}$' <<< "$message"
-          }
-
-          if [[ "$mode" == bootstrap ]]; then
-            verify_bootstrap_evidence
-          fi
-
           assert_tag_absent() {
             local status tags
             status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
@@ -70,31 +45,101 @@ jobs:
               --header 'Accept: application/vnd.github+json' \
               --header 'X-GitHub-Api-Version: 2022-11-28' \
               "$package_api")"
-            if [[ "$mode" == bootstrap ]]; then
-              case "$status" in
-                404) echo 'Bootstrap requires operator-verified package absence; HTTP 404 is not proof.' ;;
-                200) echo 'Refusing bootstrap: package already exists.' >&2; exit 1 ;;
-                *) echo "Refusing bootstrap: package API HTTP $status" >&2; exit 1 ;;
-              esac
-            else
-              if [[ "$status" != 200 ]]; then
-                echo "Cannot verify existing package and tag inventory (HTTP $status)" >&2
-                exit 1
-              fi
-              tags="$(gh api --paginate \
-                'orgs/ctrl-alt-keith/packages/container/trusted-network-registry%2Flke-publisher/versions?per_page=100' \
-                --jq '.[] | .metadata.container.tags[]?')"
-              if grep -Fxq "$TAG" <<< "$tags"; then
-                echo "Refusing to overwrite existing tag $IMAGE:$TAG" >&2
-                exit 1
-              fi
-            fi
-            # A positive registry result always refuses overwrite. A negative
-            # result is never treated as proof of absence by itself.
-            if docker manifest inspect "$IMAGE:$TAG" >/dev/null 2>&1; then
-              echo "Refusing to overwrite existing manifest $IMAGE:$TAG" >&2
+            if [[ "$status" != 200 ]]; then
+              echo "Cannot verify existing package and tag inventory (HTTP $status)" >&2
               exit 1
             fi
+            tags="$(gh api --paginate \
+              'orgs/ctrl-alt-keith/packages/container/trusted-network-registry%2Flke-publisher/versions?per_page=100' \
+              --jq '.[] | .metadata.container.tags[]?')"
+            if ! grep -Fxq "$PRIOR_TAG" <<< "$tags"; then
+              echo 'Cannot verify the known prior tag in package inventory' >&2
+              exit 1
+            fi
+            if grep -Fxq "$TAG" <<< "$tags"; then
+              echo "Refusing to overwrite existing tag $IMAGE:$TAG" >&2
+              exit 1
+            fi
+            # Use one authenticated registry token for both manifest checks.
+            # Only an explicit target 404 after a prior 200 permits a build.
+            python3 - "$PRIOR_TAG" "$TAG" <<'PY'
+          import base64
+          import json
+          import os
+          import re
+          import sys
+          from urllib.error import HTTPError, URLError
+          from urllib.parse import urlencode, urlsplit
+          from urllib.request import HTTPRedirectHandler, Request, build_opener
+
+          base = 'https://ghcr.io/v2/ctrl-alt-keith/trusted-network-registry/lke-publisher/manifests/'
+          accept = ', '.join((
+              'application/vnd.oci.image.index.v1+json',
+              'application/vnd.oci.image.manifest.v1+json',
+              'application/vnd.docker.distribution.manifest.list.v2+json',
+              'application/vnd.docker.distribution.manifest.v2+json',
+          ))
+
+          class NoRedirect(HTTPRedirectHandler):
+              def redirect_request(self, request, fp, code, msg, headers, newurl):
+                  raise ValueError('Registry redirect is not permitted')
+
+          opener = build_opener(NoRedirect)
+
+          def fetch(request):
+              try:
+                  with opener.open(request, timeout=15) as response:
+                      return response.status, response.headers, response.read()
+              except HTTPError as error:
+                  return error.code, error.headers, b''
+
+          def head(tag, token=None):
+              headers = {'Accept': accept}
+              if token is not None:
+                  headers['Authorization'] = 'Bearer ' + token
+              return fetch(Request(base + tag, headers=headers, method='HEAD'))
+
+          try:
+              status, headers, _ = head(sys.argv[1])
+              if status != 401:
+                  raise ValueError('Registry did not provide an authentication challenge')
+              challenge = headers.get('WWW-Authenticate', '')
+              if not challenge.startswith('Bearer '):
+                  raise ValueError('Registry did not provide a Bearer challenge')
+              params = dict(re.findall(r'(\w+)="([^"]+)"', challenge[7:]))
+              realm = params.get('realm', '')
+              parsed = urlsplit(realm)
+              if parsed.scheme != 'https' or parsed.netloc != 'ghcr.io':
+                  raise ValueError('Unexpected registry token endpoint')
+              if params.get('service') != 'ghcr.io':
+                  raise ValueError('Unexpected registry token service')
+              scope = 'repository:ctrl-alt-keith/trusted-network-registry/lke-publisher:pull'
+              if params.get('scope') != scope:
+                  raise ValueError('Unexpected registry token scope')
+              separator = '&' if parsed.query else '?'
+              token_url = realm + separator + urlencode({'service': 'ghcr.io', 'scope': scope})
+              credentials = os.environ['GITHUB_ACTOR'] + ':' + os.environ['GH_TOKEN']
+              basic = base64.b64encode(credentials.encode('utf-8')).decode('ascii')
+              token_status, _, payload = fetch(Request(
+                  token_url, headers={'Authorization': 'Basic ' + basic}))
+              if token_status != 200:
+                  raise ValueError('Registry token request failed')
+              token_response = json.loads(payload)
+              if not isinstance(token_response, dict):
+                  raise ValueError('Registry token response was invalid')
+              token = token_response.get('token')
+              if not isinstance(token, str) or not token:
+                  raise ValueError('Registry token response was invalid')
+              prior_status, _, _ = head(sys.argv[1], token)
+              if prior_status != 200:
+                  raise ValueError('Known prior manifest is not readable')
+              target_status, _, _ = head(sys.argv[2], token)
+              if target_status != 404:
+                  raise ValueError('Target manifest is present or its absence is unknown')
+          except (URLError, OSError, ValueError, KeyError, TypeError):
+              print('Refusing publication: authenticated manifest absence is unverified', file=sys.stderr)
+              sys.exit(1)
+          PY
           }
 
           printf '%s' "$GH_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin

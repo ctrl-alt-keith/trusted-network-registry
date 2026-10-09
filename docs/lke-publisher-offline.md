@@ -36,53 +36,34 @@ this contract does not claim byte-identical images from different builders.
 
 ## GHCR publication workflow
 
-`.github/workflows/publish-lke-publisher.yml` publishes the already reviewed
-source commit
-`9cd00403ecae72f2757adcbc6b44b873231dc944`. It builds that exact public Git
-commit rather than the commit containing the workflow, targets `linux/amd64`,
-and grants only `packages: write` to its publication job. Its destination is
+`.github/workflows/publish-lke-publisher.yml` is prepared to publish the
+reviewed source commit `8781f32ba1b0fcb2b91d190a5a603b637cccca05` to the
+existing private package. It builds that exact public Git commit rather than
+the commit containing the workflow, targets `linux/amd64`, and grants only
+`packages: write` to its publication job. Its destination is
 `ghcr.io/ctrl-alt-keith/trusted-network-registry/lke-publisher` with tag
-`sha-9cd00403ecae72f2757adcbc6b44b873231dc944`. The run summary
+`sha-8781f32ba1b0fcb2b91d190a5a603b637cccca05`. The run summary
 distinguishes the source commit, workflow commit, builder, and pushed manifest
 digest. Publication reruns are refused.
 
 GitHub [requires a `workflow_dispatch` file on the default branch](https://docs.github.com/actions/managing-workflow-runs/manually-running-a-workflow)
 before it can be dispatched, but supports a [push trigger filtered to an exact
 tag](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onpushbranchestagsbranches-ignoretags-ignore).
-The exact-tag event is the **first-package bootstrap**. Before creating the
-tag, an organization package administrator must independently verify in the
-organization's package inventory that the exact target package does not
-exist. HTTP 404 from the job's package API is not proof of absence; it can
-also mean lack of access. Record that operator check with the publication
-decision in one issue-owned immutable evidence file with exact raw-byte
-readback, size, SHA-256, provider file ID and revision. Use an annotated tag
-whose message contains these exact lines with the verified values:
-
-```text
-CAK-364-Package: ghcr.io/ctrl-alt-keith/trusted-network-registry/lke-publisher
-CAK-364-Absence-Decision: verified-absent
-CAK-364-Absence-Evidence: id:<verified-file-id>
-CAK-364-Absence-Revision: <verified-revision>
-CAK-364-Absence-Bytes: <verified-byte-length>
-CAK-364-Absence-SHA256: <verified-sha256>
-```
-
-The workflow checks that this is an annotated tag at the running workflow
-commit and that the message carries the package and evidence identity. The
-controller must compare those values with the actual verified evidence before
-pushing; the workflow has no live access to the issue-owned provider. If that
-evidence or comparison is unavailable, do not push the tag. After reviewing
-the workflow commit, creating and pushing the unique tag
-`cak-364-publish-9cd00403ecae72f2757adcbc6b44b873231dc944` at that commit
-starts the bootstrap without merging the PR. The workflow refuses bootstrap
-if it can read an existing package or manifest. It does not run on branch
-pushes. A later manual dispatch from `main` is the **existing-package path**:
-it requires readable package metadata and a complete version-tag inventory,
-and refuses the target tag if present. An inaccessible package fails closed.
-Every push of the bootstrap tag, including a deleted and re-created tag,
-requires fresh absence evidence captured after all earlier bootstrap runs
-ended. If an earlier run reached `docker push`, treat the package as existing
-even if an inventory view has not refreshed yet.
+The first-package bootstrap used a different exact tag and a reviewed workflow
+at commit `74dbc58d35eb859831c9aea2232815fd520a8052`. The current
+`cak-364-publish-8781f32ba1b0fcb2b91d190a5a603b637cccca05` tag is an
+**existing-package** publication path. After the workflow change has its own
+review and exact-head checks, an annotated tag at that workflow commit can
+launch it before merge. The job requires authenticated HTTP 200 package
+metadata, a paginated version-tag inventory that contains the known first
+publication tag, and an authenticated HTTP 200 for the first-publication
+manifest. Using the same registry token, it requires an explicit HTTP 404 for
+the new tag's manifest. Authentication, authorization, rate limiting,
+transport, redirects, and unknown responses stop the job. It repeats these
+checks after building and before pushing. An unrelated writer can still race
+these checks. Branch
+pushes do not publish. The `workflow_dispatch` alternative still requires the
+workflow on `main` and a dispatch from `main`.
 
 The first publication completed in [run 37839591842](https://github.com/ctrl-alt-keith/trusted-network-registry/actions/runs/37839591842)
 from workflow commit `74dbc58d35eb859831c9aea2232815fd520a8052`.
@@ -97,9 +78,10 @@ pull of this exact digest with the intended runtime access. This document does
 not select or create those credentials.
 
 The published image above uses source commit `9cd00403ecae72f2757adcbc6b44b873231dc944`
-and **does not contain** the upload receipt candidate in this PR. A future
-reviewed image build is required before LKE can rely on the candidate's
-one-line stdout `upload_receipt` (`sha256`, `size_bytes`, and returned
+and **does not contain** the upload receipt candidate in this PR. The
+replacement image at source `8781f32ba1b0fcb2b91d190a5a603b637cccca05`
+has not been published. A reviewed build is required before LKE can rely on
+the candidate's one-line stdout `upload_receipt` (`sha256`, `size_bytes`, and returned
 `version_id`). The digest and byte length cover the exact `PutObject.Body`
 bytes, not a later local render. An absent or `null` version ID cannot identify
 the uploaded version for readback. The integration owner must capture the
