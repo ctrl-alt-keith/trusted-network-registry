@@ -29,7 +29,12 @@ class LkeLocalRenderTests(unittest.TestCase):
                     side_effect=AssertionError("qualification attempted upload"),
                 ) as upload,
             ):
-                registry = publish_once(config_path=config)
+                registry = publish_once(
+                    config_path=config,
+                    on_upload=lambda _result: self.fail(
+                        "local-only qualification emitted an upload receipt"
+                    ),
+                )
 
             discover.assert_called_once()
             upload.assert_not_called()

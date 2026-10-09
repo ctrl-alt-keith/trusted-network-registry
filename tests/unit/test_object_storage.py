@@ -1,3 +1,4 @@
+import hashlib
 import json
 from pathlib import Path
 import tempfile
@@ -18,14 +19,23 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class FakeS3Client:
-    def __init__(self, *, fail: bool = False) -> None:
+    def __init__(
+        self,
+        *,
+        fail: bool = False,
+        response: dict[str, object] | None = None,
+    ) -> None:
         self.fail = fail
+        self.response = (
+            response if response is not None else {"VersionId": "version-example"}
+        )
         self.calls: list[dict[str, object]] = []
 
-    def put_object(self, **kwargs: object) -> None:
+    def put_object(self, **kwargs: object) -> dict[str, object]:
         if self.fail:
             raise RuntimeError("sdk rejected upload for private object")
         self.calls.append(kwargs)
+        return self.response
 
 
 class ObjectStorageTests(unittest.TestCase):
@@ -83,6 +93,39 @@ class ObjectStorageTests(unittest.TestCase):
             call["Body"],
             json.dumps(registry, indent=2, sort_keys=True).encode("utf-8") + b"\n",
         )
+        self.assertEqual(result.size_bytes, len(call["Body"]))
+        self.assertEqual(result.sha256, hashlib.sha256(call["Body"]).hexdigest())
+        self.assertEqual(result.version_id, "version-example")
+
+    def test_missing_or_null_version_id_is_not_a_versioned_receipt(self) -> None:
+        registry = json.loads((ROOT / "examples/registry.example.json").read_text())
+        publish = PublishConfig(
+            target="object_storage",
+            bucket="bucket-label-placeholder",
+            endpoint_url="https://example.com",
+            region="us-example-1",
+            object_key="registry/registry.json",
+        )
+        environ = {
+            "LINODE_OBJ_ACCESS_KEY": "placeholder-access-credential",
+            "LINODE_OBJ_SECRET_KEY": "placeholder-private-credential",
+        }
+
+        for response in ({}, {"VersionId": None}, {"VersionId": "null"}):
+            with self.subTest(response=response):
+                client = FakeS3Client(response=response)
+                result = upload_registry_payload(
+                    registry=registry,
+                    publish=publish,
+                    environ=environ,
+                    client_factory=lambda *_args: client,
+                )
+
+                self.assertIsNone(result.version_id)
+                self.assertEqual(
+                    result.sha256,
+                    hashlib.sha256(client.calls[0]["Body"]).hexdigest(),
+                )
 
     def test_upload_registry_payload_requires_env_credentials(self) -> None:
         registry = json.loads((ROOT / "examples/registry.example.json").read_text())
@@ -245,6 +288,43 @@ class ObjectStorageTests(unittest.TestCase):
         self.assertNotIn("bucket-label-placeholder", message)
         self.assertNotIn("placeholder-private-credential", message)
 
+    def test_timeout_after_put_call_has_no_success_receipt(self) -> None:
+        class TimeoutAfterSendClient:
+            def __init__(self) -> None:
+                self.bodies: list[bytes] = []
+
+            def put_object(self, **kwargs: object) -> None:
+                body = kwargs["Body"]
+                assert isinstance(body, bytes)
+                self.bodies.append(body)
+                raise TimeoutError("private endpoint and key details")
+
+        client = TimeoutAfterSendClient()
+        registry = json.loads((ROOT / "examples/registry.example.json").read_text())
+
+        with self.assertRaises(ObjectStorageUploadError) as raised:
+            upload_registry_payload(
+                registry=registry,
+                publish=PublishConfig(
+                    target="object_storage",
+                    bucket="bucket-label-placeholder",
+                    endpoint_url="https://example.com",
+                    region="us-example-1",
+                    object_key="registry/registry.json",
+                ),
+                environ={
+                    "LINODE_OBJ_ACCESS_KEY": "placeholder-access-credential",
+                    "LINODE_OBJ_SECRET_KEY": "placeholder-private-credential",
+                },
+                client_factory=lambda *_args: client,
+            )
+
+        self.assertEqual(len(client.bodies), 1)
+        self.assertEqual(
+            str(raised.exception), "object storage upload failed (TimeoutError)"
+        )
+        self.assertNotIn("private endpoint", str(raised.exception))
+
     def test_publish_once_renders_locally_then_uploads_object_storage(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
@@ -282,7 +362,11 @@ object_key = "registry/registry.json"
                 return ObjectStorageUploadResult(
                     key=config.publish.object_key,
                     size_bytes=0,
+                    sha256="a" * 64,
+                    version_id="version-example",
                 )
+
+            captured_uploads: list[ObjectStorageUploadResult] = []
 
             registry = publish_once(
                 config_path=config_path,
@@ -292,12 +376,14 @@ object_key = "registry/registry.json"
                     "LINODE_OBJ_SECRET_KEY": "placeholder-private-credential",
                 },
                 object_storage_uploader=uploader,
+                on_upload=captured_uploads.append,
             )
 
             self.assertTrue(output_path.exists())
             self.assertEqual(json.loads(output_path.read_text()), registry)
             self.assertEqual(len(uploads), 1)
             self.assertEqual(uploads[0][1], "placeholder-access-credential")
+            self.assertEqual(captured_uploads[0].version_id, "version-example")
 
 
 if __name__ == "__main__":

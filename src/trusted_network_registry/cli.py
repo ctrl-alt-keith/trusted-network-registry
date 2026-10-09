@@ -9,7 +9,7 @@ import sys
 
 from .config import load_publisher_config
 from .discovery.meraki import MerakiDiscoveryError
-from .object_storage import ObjectStorageError
+from .object_storage import ObjectStorageError, ObjectStorageUploadResult
 from .publish import publish_once
 from .schema import SchemaError, validate_registry_document
 
@@ -44,13 +44,30 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "publish":
             if not args.once:
                 parser.error("publish requires --once for the MVP execution model")
+            upload: ObjectStorageUploadResult | None = None
+
+            def capture_upload(result: ObjectStorageUploadResult) -> None:
+                nonlocal upload
+                upload = result
+
             registry = publish_once(
                 config_path=args.config,
                 output_path=args.output,
                 tfvars_output_path=args.tfvars_output,
                 generated_at_text=args.generated_at,
+                on_upload=capture_upload,
             )
-            print(json.dumps({"status": "published", "entries": registry["summary"]["entry_count"]}))
+            status: dict[str, object] = {
+                "status": "published",
+                "entries": registry["summary"]["entry_count"],
+            }
+            if upload is not None:
+                status["upload_receipt"] = {
+                    "sha256": upload.sha256,
+                    "size_bytes": upload.size_bytes,
+                    "version_id": upload.version_id,
+                }
+            print(json.dumps(status))
             return 0
         if args.command == "validate-registry":
             document = json.loads(args.path.read_text(encoding="utf-8"))

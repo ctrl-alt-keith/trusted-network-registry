@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hashlib
 import json
 from typing import Any, Callable, Mapping, Protocol
 
@@ -40,6 +41,8 @@ ClientFactory = Callable[
 class ObjectStorageUploadResult:
     key: str
     size_bytes: int
+    sha256: str
+    version_id: str | None
 
 
 def upload_registry_payload(
@@ -63,7 +66,7 @@ def upload_registry_payload(
     factory = client_factory or create_s3_client
     try:
         client = factory(access_key, secret_key, endpoint_url, region)
-        client.put_object(
+        response = client.put_object(
             Bucket=bucket,
             Key=object_key,
             Body=body,
@@ -77,7 +80,20 @@ def upload_registry_payload(
             f"object storage upload failed ({exc.__class__.__name__})"
         ) from exc
 
-    return ObjectStorageUploadResult(key=object_key, size_bytes=len(body))
+    version_id = response.get("VersionId") if isinstance(response, Mapping) else None
+    if (
+        not isinstance(version_id, str)
+        or not version_id.strip()
+        or version_id == "null"
+    ):
+        version_id = None
+
+    return ObjectStorageUploadResult(
+        key=object_key,
+        size_bytes=len(body),
+        sha256=hashlib.sha256(body).hexdigest(),
+        version_id=version_id,
+    )
 
 
 def create_s3_client(

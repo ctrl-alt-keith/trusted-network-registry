@@ -72,6 +72,31 @@ that payload to the configured object key with a private ACL. It does not
 create buckets, change bucket policies, make objects public, mutate firewalls,
 or run a reconciliation loop.
 
+After `PutObject` returns, the one-line stdout JSON retains `status` and
+`entries` and adds `upload_receipt` for Object Storage runs:
+
+```json
+{"status":"published","entries":1,"upload_receipt":{"sha256":"<64 lowercase hex digits>","size_bytes":123,"version_id":"<returned version ID>"}}
+```
+
+`sha256` and `size_bytes` describe the exact UTF-8 JSON bytes supplied as
+`PutObject.Body`, including the final newline. The receipt does not print the
+payload, bucket, key, endpoint, or credentials. `version_id` is the provider's
+returned `VersionId`; it is JSON `null` if absent, blank, or the literal `null`
+version sentinel. A returned PUT without a usable version ID keeps the existing
+exit-0 `published` behavior for unversioned-bucket callers, but it does **not**
+identify a version suitable for LKE's exact-version verification gate. The
+`local_file` stdout shape remains unchanged and has no `upload_receipt`.
+
+If the SDK raises during PUT, the command exits 1 with a public-safe error on
+stderr and emits no success receipt. A timeout or process failure after the PUT
+may leave the write outcome unknown; absence of a receipt does not prove the
+object was not written. Reconcile Object Storage state before deciding whether
+to retry.
+The publisher adds no application-level retry. SDK retries or duplicate Job
+execution can produce additional versions, so even a receipt with a VersionId
+does not prove exactly-once writes or replace private readback verification.
+
 Validation failures identify the affected CIDR field without echoing malformed
 CIDR values. This keeps operator error output from disclosing private network
 configuration.

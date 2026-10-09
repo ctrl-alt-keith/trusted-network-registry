@@ -96,6 +96,19 @@ the integration owner must separately authorize and verify an authenticated
 pull of this exact digest with the intended runtime access. This document does
 not select or create those credentials.
 
+The published image above uses source commit `9cd00403ecae72f2757adcbc6b44b873231dc944`
+and **does not contain** the upload receipt candidate in this PR. A future
+reviewed image build is required before LKE can rely on the candidate's
+one-line stdout `upload_receipt` (`sha256`, `size_bytes`, and returned
+`version_id`). The digest and byte length cover the exact `PutObject.Body`
+bytes, not a later local render. An absent or `null` version ID cannot identify
+the uploaded version for readback. The integration owner must capture the
+receipt after the one-shot container exits and independently verify that
+version's bytes and current-version status before accepting publication. See
+[Object Storage upload behavior](operations.md#object-storage-uploads) for
+the candidate's failure and compatibility limits. No new image has been built
+or published for this change.
+
 The workflow also contains an optional public-verification path for a future,
 separately authorized public package. If that decision changes, an organization
 package administrator can change visibility; only then may a
