@@ -12,6 +12,11 @@ variable "object_key" {
   type        = string
   description = "Registry object key documented for publisher use. Terraform does not manage this object."
   default     = "registry.json"
+
+  validation {
+    condition     = var.object_key != "" && trimspace(var.object_key) == var.object_key
+    error_message = "object_key must be a non-empty key with no surrounding whitespace."
+  }
 }
 
 variable "enable_versioning" {
