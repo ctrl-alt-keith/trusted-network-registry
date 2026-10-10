@@ -21,10 +21,13 @@ Terraform does not own:
 
 The lifecycle rule uses a prefix filter, so it also applies to any future key
 that starts with `object_key`; it cannot select only one exact key. It does not
-expire the current version. Akamai enforces a one-day rule at the first bucket-
-local midnight after a noncurrent version reaches 24 hours, so the rule does
-not cap the number of versions when publishes are frequent. Before applying,
-review the actual `object_key`, the complete lifecycle policy, and the plan.
+expire the current version. If a delete marker becomes current, however, every
+data version is noncurrent and can expire. Akamai schedules lifecycle processing
+at bucket-local midnight after a noncurrent version reaches 24 hours; deletion
+may take a later pass. The rule does not cap the number of versions when
+publishes are frequent. Before applying, confirm `object_key` equals the
+publisher's configured `publish.object_key`, then review the complete lifecycle
+policy and plan.
 The bucket resource requires Object Storage credentials to manage lifecycle
 rules. See [Akamai lifecycle policies](https://techdocs.akamai.com/cloud-computing/docs/lifecycle-policies).
 
