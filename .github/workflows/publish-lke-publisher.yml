@@ -1,0 +1,207 @@
+name: Publish LKE publisher image
+
+# Publication and later public verification are separate jobs and tag events.
+# A reviewed exact tag can publish to the existing private package before merge;
+# dispatch needs main.
+on:
+  push:
+    tags:
+      - cak-364-publish-8781f32ba1b0fcb2b91d190a5a603b637cccca05
+      - 'cak-364-verify-sha256-*'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: publish-lke-publisher-sha-8781f32ba1b0fcb2b91d190a5a603b637cccca05
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/tags/cak-364-publish-8781f32ba1b0fcb2b91d190a5a603b637cccca05') ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-24.04
+    permissions:
+      packages: write
+    env:
+      SOURCE_SHA: 8781f32ba1b0fcb2b91d190a5a603b637cccca05
+      IMAGE: ghcr.io/ctrl-alt-keith/trusted-network-registry/lke-publisher
+      TAG: sha-8781f32ba1b0fcb2b91d190a5a603b637cccca05
+      PRIOR_TAG: sha-9cd00403ecae72f2757adcbc6b44b873231dc944
+    steps:
+      - name: Build and push exact source
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(uname -m)" = x86_64
+          package_api='https://api.github.com/orgs/ctrl-alt-keith/packages/container/trusted-network-registry%2Flke-publisher'
+          assert_tag_absent() {
+            local status tags
+            status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+              --header "Authorization: Bearer $GH_TOKEN" \
+              --header 'Accept: application/vnd.github+json' \
+              --header 'X-GitHub-Api-Version: 2022-11-28' \
+              "$package_api")"
+            if [[ "$status" != 200 ]]; then
+              echo "Cannot verify existing package and tag inventory (HTTP $status)" >&2
+              exit 1
+            fi
+            tags="$(gh api --paginate \
+              'orgs/ctrl-alt-keith/packages/container/trusted-network-registry%2Flke-publisher/versions?per_page=100' \
+              --jq '.[] | .metadata.container.tags[]?')"
+            if ! grep -Fxq "$PRIOR_TAG" <<< "$tags"; then
+              echo 'Cannot verify the known prior tag in package inventory' >&2
+              exit 1
+            fi
+            if grep -Fxq "$TAG" <<< "$tags"; then
+              echo "Refusing to overwrite existing tag $IMAGE:$TAG" >&2
+              exit 1
+            fi
+            # Use one authenticated registry token for both manifest checks.
+            # Only an explicit target 404 after a prior 200 permits a build.
+            python3 - "$PRIOR_TAG" "$TAG" <<'PY'
+          import base64
+          import json
+          import os
+          import re
+          import sys
+          from urllib.error import HTTPError, URLError
+          from urllib.parse import urlencode, urlsplit
+          from urllib.request import HTTPRedirectHandler, Request, build_opener
+
+          base = 'https://ghcr.io/v2/ctrl-alt-keith/trusted-network-registry/lke-publisher/manifests/'
+          accept = ', '.join((
+              'application/vnd.oci.image.index.v1+json',
+              'application/vnd.oci.image.manifest.v1+json',
+              'application/vnd.docker.distribution.manifest.list.v2+json',
+              'application/vnd.docker.distribution.manifest.v2+json',
+          ))
+
+          class NoRedirect(HTTPRedirectHandler):
+              def redirect_request(self, request, fp, code, msg, headers, newurl):
+                  raise ValueError('Registry redirect is not permitted')
+
+          opener = build_opener(NoRedirect)
+
+          def fetch(request):
+              try:
+                  with opener.open(request, timeout=15) as response:
+                      return response.status, response.headers, response.read()
+              except HTTPError as error:
+                  return error.code, error.headers, b''
+
+          def head(tag, token=None):
+              headers = {'Accept': accept}
+              if token is not None:
+                  headers['Authorization'] = 'Bearer ' + token
+              return fetch(Request(base + tag, headers=headers, method='HEAD'))
+
+          try:
+              status, headers, _ = head(sys.argv[1])
+              if status != 401:
+                  raise ValueError('Registry did not provide an authentication challenge')
+              challenge = headers.get('WWW-Authenticate', '')
+              if not challenge.startswith('Bearer '):
+                  raise ValueError('Registry did not provide a Bearer challenge')
+              params = dict(re.findall(r'(\w+)="([^"]+)"', challenge[7:]))
+              realm = params.get('realm', '')
+              parsed = urlsplit(realm)
+              if parsed.scheme != 'https' or parsed.netloc != 'ghcr.io':
+                  raise ValueError('Unexpected registry token endpoint')
+              if params.get('service') != 'ghcr.io':
+                  raise ValueError('Unexpected registry token service')
+              scope = 'repository:ctrl-alt-keith/trusted-network-registry/lke-publisher:pull'
+              if params.get('scope') != scope:
+                  raise ValueError('Unexpected registry token scope')
+              separator = '&' if parsed.query else '?'
+              token_url = realm + separator + urlencode({'service': 'ghcr.io', 'scope': scope})
+              credentials = os.environ['GITHUB_ACTOR'] + ':' + os.environ['GH_TOKEN']
+              basic = base64.b64encode(credentials.encode('utf-8')).decode('ascii')
+              token_status, _, payload = fetch(Request(
+                  token_url, headers={'Authorization': 'Basic ' + basic}))
+              if token_status != 200:
+                  raise ValueError('Registry token request failed')
+              token_response = json.loads(payload)
+              if not isinstance(token_response, dict):
+                  raise ValueError('Registry token response was invalid')
+              token = token_response.get('token')
+              if not isinstance(token, str) or not token:
+                  raise ValueError('Registry token response was invalid')
+              prior_status, _, _ = head(sys.argv[1], token)
+              if prior_status != 200:
+                  raise ValueError('Known prior manifest is not readable')
+              target_status, _, _ = head(sys.argv[2], token)
+              if target_status != 404:
+                  raise ValueError('Target manifest is present or its absence is unknown')
+          except (URLError, OSError, ValueError, KeyError, TypeError):
+              print('Refusing publication: authenticated manifest absence is unverified', file=sys.stderr)
+              sys.exit(1)
+          PY
+          }
+
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          assert_tag_absent
+          docker build --pull --platform linux/amd64 \
+            --file Dockerfile.lke \
+            --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
+            --label "org.opencontainers.image.revision=$SOURCE_SHA" \
+            --tag "$IMAGE:$TAG" \
+            "https://github.com/$GITHUB_REPOSITORY.git#$SOURCE_SHA"
+          docker run --rm --platform linux/amd64 --network none --read-only \
+            "$IMAGE:$TAG" --help >/dev/null
+          docker run --rm --platform linux/amd64 --network none --read-only \
+            --entrypoint python "$IMAGE:$TAG" \
+            -c 'import boto3, trusted_network_registry.cli'
+
+          # Recheck immediately before push, including after the build time.
+          assert_tag_absent
+          push_output="$(docker push "$IMAGE:$TAG")"
+          printf '%s\n' "$push_output"
+          digest="$(sed -nE 's/^.*digest: (sha256:[0-9a-f]{64}).*$/\1/p' <<< "$push_output" | tail -n 1)"
+          [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+
+          {
+            printf 'Source commit: %s\n' "$SOURCE_SHA"
+            printf 'Workflow commit: %s\n' "$GITHUB_SHA"
+            printf 'Workflow run: %s (attempt %s)\n' "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT"
+            printf 'Builder: %s (%s)\n' "$RUNNER_NAME" "$(docker version --format '{{.Server.Version}}')"
+            printf 'Image: %s@%s (linux/amd64)\n' "$IMAGE" "$digest"
+          } >> "$GITHUB_STEP_SUMMARY"
+          printf 'Pushed manifest: %s@%s\n' "$IMAGE" "$digest"
+
+          echo 'Public anonymous verification is a separate fresh-runner tag event.'
+
+  verify-public:
+    if: >-
+      github.event_name == 'push' &&
+      startsWith(github.ref, 'refs/tags/cak-364-verify-sha256-')
+    runs-on: ubuntu-24.04
+    permissions: {}
+    env:
+      IMAGE: ghcr.io/ctrl-alt-keith/trusted-network-registry/lke-publisher
+    steps:
+      - name: Pull the published digest anonymously on a fresh runner
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = x86_64
+          digest_hex="${GITHUB_REF_NAME#cak-364-verify-sha256-}"
+          [[ "$digest_hex" =~ ^[0-9a-f]{64}$ ]]
+          digest="sha256:$digest_hex"
+          anonymous_config="$(mktemp -d "$RUNNER_TEMP/ghcr-anonymous.XXXXXX")"
+          if DOCKER_CONFIG="$anonymous_config" docker image inspect "$IMAGE@$digest" >/dev/null 2>&1; then
+            echo 'Refusing verification with a locally cached image.' >&2
+            exit 1
+          fi
+          DOCKER_CONFIG="$anonymous_config" docker manifest inspect "$IMAGE@$digest" >/dev/null
+          DOCKER_CONFIG="$anonymous_config" docker pull --platform linux/amd64 "$IMAGE@$digest"
+          platform="$(docker image inspect --format '{{.Os}}/{{.Architecture}}' "$IMAGE@$digest")"
+          test "$platform" = linux/amd64
+          {
+            printf 'Anonymous image: %s@%s\n' "$IMAGE" "$digest"
+            printf 'Platform: %s\n' "$platform"
+            printf 'Workflow commit: %s\n' "$GITHUB_SHA"
+            printf 'Verification run: %s (attempt %s)\n' "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT"
+          } >> "$GITHUB_STEP_SUMMARY"

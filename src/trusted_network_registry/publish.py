@@ -33,6 +33,7 @@ def publish_once(
     generated_at_text: str | None = None,
     environ: Mapping[str, str] | None = None,
     object_storage_uploader: ObjectStorageUploader | None = None,
+    on_upload: Callable[[ObjectStorageUploadResult], None] | None = None,
 ) -> dict[str, Any]:
     config = load_publisher_config(config_path)
     target_output, target_tfvars = _resolve_publish_output_paths(
@@ -80,7 +81,9 @@ def publish_once(
 
     if config.publish.target == "object_storage":
         uploader = object_storage_uploader or _upload_to_object_storage
-        uploader(registry, config, environ or os.environ)
+        upload = uploader(registry, config, environ or os.environ)
+        if on_upload is not None:
+            on_upload(upload)
 
     return registry
 
