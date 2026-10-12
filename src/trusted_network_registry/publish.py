@@ -114,7 +114,12 @@ def _resolve_publish_output_paths(
     target_tfvars = tfvars_output_path
     if target_tfvars is None and config.publish.tfvars_path:
         target_tfvars = _resolve_relative(config_path, config.publish.tfvars_path)
-    _reject_publish_path_collisions(config_path, target_output, target_tfvars)
+    fixture_path = None
+    if config.meraki.enabled and config.meraki.fixture_path:
+        fixture_path = _resolve_relative(config_path, config.meraki.fixture_path)
+    _reject_publish_path_collisions(
+        config_path, target_output, target_tfvars, fixture_path
+    )
     return target_output, target_tfvars
 
 
@@ -122,11 +127,12 @@ def _reject_publish_path_collisions(
     config_path: Path,
     output_path: Path,
     tfvars_output_path: Path | None,
+    fixture_path: Path | None,
 ) -> None:
-    paths = [
-        ("publisher config", config_path),
-        ("registry output", output_path),
-    ]
+    paths = [("publisher config", config_path)]
+    if fixture_path is not None:
+        paths.append(("Meraki fixture", fixture_path))
+    paths.append(("registry output", output_path))
     if tfvars_output_path is not None:
         paths.append(("tfvars output", tfvars_output_path))
 

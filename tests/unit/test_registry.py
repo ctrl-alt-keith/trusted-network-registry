@@ -297,6 +297,37 @@ class RegistryTests(unittest.TestCase):
             )
             self.assertFalse(output_path.exists())
 
+    def test_publish_once_rejects_outputs_that_match_meraki_fixture(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            fixture_path = directory / "meraki-uplinks.json"
+            fixture_text = '{"private-inventory": "keep"}\n'
+            fixture_path.write_text(fixture_text, encoding="utf-8")
+            config_path = directory / "publisher-config.toml"
+            config_path.write_text(
+                _publisher_config_text(local_path="registry.json")
+                .replace("enabled = false", 'enabled = true\nfixture_path = "meraki-uplinks.json"'),
+                encoding="utf-8",
+            )
+
+            for output_kind in ("registry", "tfvars"):
+                with self.subTest(output_kind=output_kind):
+                    kwargs = (
+                        {"output_path": fixture_path}
+                        if output_kind == "registry"
+                        else {"tfvars_output_path": fixture_path}
+                    )
+                    with self.assertRaises(ValueError) as raised:
+                        publish_once(
+                            config_path=config_path,
+                            generated_at_text="2026-05-17T00:00:00Z",
+                            **kwargs,
+                        )
+
+                    self.assertIn("Meraki fixture", str(raised.exception))
+                    self.assertEqual(fixture_path.read_text(encoding="utf-8"), fixture_text)
+                    self.assertFalse((directory / "registry.json").exists())
+
     def test_render_tfvars_extracts_active_cidrs(self) -> None:
         registry = json.loads((ROOT / "examples/registry.example.json").read_text())
         tfvars = render_tfvars(registry)

@@ -28,9 +28,9 @@ the prior file at that destination intact instead of exposing a partially
 written payload to consumers.
 
 Before discovery or rendering, the publisher verifies that the config file,
-registry output, and generated tfvars output point at distinct files. This
-prevents a typo from overwriting the private config or making one generated
-artifact clobber another.
+any configured Meraki fixture, registry output, and generated tfvars output
+point at distinct files. This prevents a typo from overwriting publisher inputs
+or making one generated artifact clobber another.
 
 Keep private operator files under `operator/`, including
 `operator/publisher-config.toml`, `operator/publisher.env`, generated registry
