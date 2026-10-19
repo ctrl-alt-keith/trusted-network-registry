@@ -272,6 +272,31 @@ class RegistryTests(unittest.TestCase):
             )
             self.assertFalse((Path(tmp) / "generated" / "registry.json").exists())
 
+    def test_publish_once_rejects_output_as_parent_of_other_output(self) -> None:
+        for registry_is_parent in (True, False):
+            with self.subTest(registry_is_parent=registry_is_parent):
+                with tempfile.TemporaryDirectory() as tmp:
+                    root = Path(tmp)
+                    config_path = root / "publisher-config.toml"
+                    config_path.write_text(
+                        _publisher_config_text(local_path="unused.json"),
+                        encoding="utf-8",
+                    )
+                    parent = root / "generated"
+                    child = parent / "registry.json"
+                    registry_output = parent if registry_is_parent else child
+                    tfvars_output = child if registry_is_parent else parent
+
+                    with self.assertRaisesRegex(ValueError, "publish paths must be distinct"):
+                        publish_once(
+                            config_path=config_path,
+                            output_path=registry_output,
+                            tfvars_output_path=tfvars_output,
+                            generated_at_text="2026-05-17T00:00:00Z",
+                        )
+
+                    self.assertFalse(parent.exists())
+
     def test_publish_once_rejects_explicit_tfvars_path_that_matches_configured_output(
         self,
     ) -> None:
