@@ -29,8 +29,9 @@ written payload to consumers.
 
 Before discovery or rendering, the publisher verifies that the config file,
 any configured Meraki fixture, registry output, and generated tfvars output
-point at distinct files. This prevents a typo from overwriting publisher inputs
-or making one generated artifact clobber another.
+point at distinct files and that none is a parent path of another. This
+prevents a typo from overwriting publisher inputs or leaving a partial local
+publish when an output would need to serve as both a file and a directory.
 
 Keep private operator files under `operator/`, including
 `operator/publisher-config.toml`, `operator/publisher.env`, generated registry

@@ -136,15 +136,18 @@ def _reject_publish_path_collisions(
     if tfvars_output_path is not None:
         paths.append(("tfvars output", tfvars_output_path))
 
-    seen: dict[Path, str] = {}
+    seen: list[tuple[Path, str]] = []
     collisions: list[str] = []
     for label, path in paths:
         resolved = path.resolve(strict=False)
-        previous = seen.get(resolved)
-        if previous is None:
-            seen[resolved] = label
-        else:
-            collisions.append(f"{previous} and {label}")
+        for previous_path, previous_label in seen:
+            if (
+                resolved == previous_path
+                or resolved in previous_path.parents
+                or previous_path in resolved.parents
+            ):
+                collisions.append(f"{previous_label} and {label}")
+        seen.append((resolved, label))
 
     if collisions:
         raise ValueError(
