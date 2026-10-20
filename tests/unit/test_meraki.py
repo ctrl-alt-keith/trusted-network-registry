@@ -1,9 +1,12 @@
 from datetime import datetime, timezone
+from http.client import HTTPMessage
 import json
 from pathlib import Path
 import unittest
 from unittest.mock import patch
+from urllib.request import HTTPSHandler, build_opener
 
+from trusted_network_registry.discovery import meraki
 from trusted_network_registry.discovery.meraki import (
     API_KEY_ENV,
     DASHBOARD_API_BASE_URL,
@@ -18,6 +21,58 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class MerakiTests(unittest.TestCase):
+    def test_credentialed_discovery_refuses_http_redirects(self) -> None:
+        for status in (301, 302, 303, 307, 308):
+            with self.subTest(status=status):
+                opened = []
+
+                class RedirectResponse:
+                    code = status
+                    msg = "redirect"
+                    headers = HTTPMessage()
+
+                    def __init__(self) -> None:
+                        self.headers = HTTPMessage()
+                        self.headers["Location"] = "https://example.invalid/collect"
+
+                    def info(self):
+                        return self.headers
+
+                    def close(self) -> None:
+                        pass
+
+                    def read(self) -> bytes:
+                        return b"[]"
+
+                    def __enter__(self):
+                        return self
+
+                    def __exit__(self, *_args):
+                        return False
+
+                class FakeHTTPSHandler(HTTPSHandler):
+                    def https_open(self, request):
+                        opened.append(request)
+                        response = RedirectResponse()
+                        if len(opened) > 1:
+                            response.code = 200
+                        return response
+
+                def fake_build_opener(handler):
+                    return build_opener(handler, FakeHTTPSHandler())
+
+                with (
+                    patch.object(meraki, "build_opener", side_effect=fake_build_opener),
+                    self.assertRaises(MerakiDiscoveryError) as raised,
+                ):
+                    fetch_meraki_uplinks_by_device(
+                        organization_id="example-org", api_key="synthetic-api-key"
+                    )
+
+                self.assertEqual(len(opened), 1)
+                self.assertEqual(opened[0].get_header("Authorization"), "Bearer synthetic-api-key")
+                self.assertNotIn("synthetic-api-key", str(raised.exception))
+
     def test_sanitized_fixture_renders_ipv4_and_ipv6_entries(self) -> None:
         entries = render_meraki_entries_from_fixture(
             ROOT / "tests/fixtures/sanitized/meraki-uplinks.example.json",
