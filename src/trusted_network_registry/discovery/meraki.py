@@ -12,7 +12,7 @@ import re
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urljoin, urlparse
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from ..registry import format_timestamp
 
@@ -27,6 +27,16 @@ TIMEOUT_SECONDS = 30
 
 class MerakiDiscoveryError(RuntimeError):
     """Raised when live Meraki discovery cannot complete safely."""
+
+
+class RejectRedirects(HTTPRedirectHandler):
+    def redirect_request(self, request, fp, code, message, headers, newurl):
+        return None
+
+
+def urlopen(request: Request, timeout: float):
+    """Open one credentialed request without following an HTTP redirect."""
+    return build_opener(RejectRedirects()).open(request, timeout=timeout)
 
 
 def render_meraki_entries_from_fixture(
