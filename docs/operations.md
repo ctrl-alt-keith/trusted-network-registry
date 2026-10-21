@@ -110,7 +110,9 @@ and export `MERAKI_DASHBOARD_API_KEY` before running the one-shot publisher.
 The publisher calls only the read-only uplink-address endpoint and follows
 documented `Link` header pagination until no next page is present. It fails
 before re-requesting a repeated page URL, so a malformed pagination cycle does
-not silently duplicate discovery requests.
+not silently duplicate discovery requests. Credentialed requests do not follow
+HTTP redirects; a redirect fails discovery without sending the API key to the
+redirect destination.
 Malformed device, uplink, address, or public-address records, and non-string or
 invalid public addresses, fail discovery without echoing the provider data in
 the error message.
