@@ -240,6 +240,8 @@ def _parse_network(
     value: Any,
     field: str,
 ) -> ipaddress.IPv4Network | ipaddress.IPv6Network:
+    if not isinstance(value, str):
+        raise SchemaError(f"{field} must be a valid CIDR")
     try:
         return ipaddress.ip_network(value, strict=False)
     except (TypeError, ValueError) as exc:
