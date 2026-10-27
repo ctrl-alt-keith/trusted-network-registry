@@ -215,6 +215,29 @@ class SchemaFileTests(unittest.TestCase):
 
                 self.assertIn("universal allow CIDR", str(raised.exception))
 
+    def test_cidr_fields_reject_non_string_values(self) -> None:
+        config = {
+            "static_entries": [
+                {
+                    "id": "admin-static-example",
+                    "cidr": 1,
+                    "source_ref": "static-admin",
+                }
+            ],
+            "publish": {"local_path": "registry.json"},
+        }
+        registry = json.loads(REGISTRY_EXAMPLE_PATH.read_text())
+        registry["entries"][0]["cidr"] = 1
+
+        for document, validate, field in (
+            (config, validate_publisher_config, "static_entries[0].cidr"),
+            (registry, validate_registry_document, "entries[0].cidr"),
+        ):
+            with self.subTest(field=field):
+                with self.assertRaises(SchemaError) as raised:
+                    validate(document)
+                self.assertEqual(str(raised.exception), f"{field} must be a valid CIDR")
+
     def test_static_entry_status_must_be_supported(self) -> None:
         with self.assertRaises(SchemaError) as raised:
             validate_publisher_config(
