@@ -184,18 +184,19 @@ This is the first live provider boundary: live Meraki discovery is read-only,
 and Object Storage upload writes the generated registry object. Do not run this
 step from CI.
 
-## 5. Verify Local Payload Shape
+## 5. Check Local Payload After Publish
 
 Validate the local payload without pasting its contents into logs, PRs, or
 issues:
 
 ```sh
 trusted-network-registry validate-registry operator/generated/registry.json
-jq 'keys' operator/generated/registry.json
+jq '{schema_version, generated_at: .registry.generated_at, valid_until: .registry.valid_until, address_families: ([.entries[].address_family] | unique)}' operator/generated/registry.json
 ```
 
 Confirm `generated_at`, `valid_until`, schema version, and CIDR families look
-right before upload. Treat the CIDR list itself as sensitive. Generated
+right before relying on the uploaded object. The publish command in step 4
+already uploaded it. Treat the CIDR list itself as sensitive. Generated
 registry artifacts contain sensitive operational access data even when they
 are ignored by Git.
 
