@@ -272,6 +272,28 @@ class RegistryTests(unittest.TestCase):
             )
             self.assertFalse((Path(tmp) / "generated" / "registry.json").exists())
 
+    def test_publish_once_rejects_outputs_aliasing_through_symlinked_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "generated").mkdir()
+            (root / "alias").symlink_to(root / "generated", target_is_directory=True)
+            config_path = root / "publisher-config.toml"
+            config_path.write_text(
+                _publisher_config_text(
+                    local_path="generated/registry.json",
+                    tfvars_path="alias/registry.json",
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "registry output and tfvars output"):
+                publish_once(
+                    config_path=config_path,
+                    generated_at_text="2026-05-17T00:00:00Z",
+                )
+
+            self.assertFalse((root / "generated" / "registry.json").exists())
+
     def test_publish_once_rejects_output_as_parent_of_other_output(self) -> None:
         for registry_is_parent in (True, False):
             with self.subTest(registry_is_parent=registry_is_parent):
