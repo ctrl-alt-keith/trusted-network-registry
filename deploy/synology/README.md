@@ -4,9 +4,10 @@ The MVP execution model is a one-shot container run on a schedule. The
 container starts, renders one registry payload, writes logs to stdout, and
 exits.
 
-This repository does not currently publish official container images. Build
-and load the local image manually for first Synology use, or publish your own
-private image. GHCR or other official image publication is a follow-up.
+The repository's GHCR workflow publishes a private `linux/amd64` image for the
+LKE publisher path; it does not define a Synology image release. For Synology,
+build and load a local image for the NAS architecture, or publish a separate
+private image for that deployment.
 
 ## Recommended Shape
 
