@@ -3,10 +3,10 @@
 The recommended Synology execution model is a one-shot scheduled container
 run.
 
-This repository does not currently publish official container images.
-Operators can build and load the local image manually for first Synology use,
-or publish their own private image. GHCR or other official image publication is
-a follow-up, not part of the current repo contract.
+The repository's GHCR workflow publishes a private `linux/amd64` image for the
+LKE publisher path; it does not define a Synology image release. For Synology,
+build and load a local image for the NAS architecture, or publish a separate
+private image for that deployment.
 
 ## Shape
 
