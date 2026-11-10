@@ -31,6 +31,22 @@ class PublicSafetyTests(unittest.TestCase):
                 }
             )
 
+    def test_rejects_non_documentation_ipv4_in_examples(self) -> None:
+        for cidr in (
+            "192.168.1.5/32",
+            "192.168.1.5/33",
+            "8.8.8.8/32",
+            "198.51.100.42/16",
+        ):
+            with self.subTest(cidr=cidr):
+                with self.assertRaisesRegex(PublicSafetyError, "IPv4 outside documentation ranges"):
+                    assert_public_safe_document({"cidr": cidr})
+                with self.assertRaisesRegex(PublicSafetyError, "IPv4 outside documentation ranges"):
+                    assert_public_safe_text(f'cidr = "{cidr}"')
+
+        assert_public_safe_document({"cidr": "198.51.100.42/32"})
+        assert_public_safe_text('cidr = "203.0.113.0/24"')
+
     def test_operator_example_text_files_are_public_safe(self) -> None:
         for path in [
             ROOT / "examples/publisher-config.example.toml",
