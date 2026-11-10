@@ -48,7 +48,11 @@ def _contains_non_documentation_ipv4(text: str) -> bool:
         try:
             network = ipaddress.IPv4Network(match.group(0), strict=False)
         except ValueError:
-            continue
+            # An invalid CIDR suffix must not hide a valid real address.
+            try:
+                network = ipaddress.IPv4Network(match.group(0).split("/", 1)[0])
+            except ValueError:
+                continue
         if not any(network.subnet_of(documentation) for documentation in DOCUMENTATION_IPV4_NETWORKS):
             return True
     return False

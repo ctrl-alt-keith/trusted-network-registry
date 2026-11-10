@@ -32,7 +32,12 @@ class PublicSafetyTests(unittest.TestCase):
             )
 
     def test_rejects_non_documentation_ipv4_in_examples(self) -> None:
-        for cidr in ("192.168.1.5/32", "8.8.8.8/32", "198.51.100.42/16"):
+        for cidr in (
+            "192.168.1.5/32",
+            "192.168.1.5/33",
+            "8.8.8.8/32",
+            "198.51.100.42/16",
+        ):
             with self.subTest(cidr=cidr):
                 with self.assertRaisesRegex(PublicSafetyError, "IPv4 outside documentation ranges"):
                     assert_public_safe_document({"cidr": cidr})
