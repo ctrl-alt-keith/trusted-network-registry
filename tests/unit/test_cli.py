@@ -16,6 +16,28 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class CliTests(unittest.TestCase):
+    def test_validate_registry_reports_malformed_enum_values_as_json(self) -> None:
+        example = json.loads((ROOT / "examples/registry.example.json").read_text())
+        for field, value in (
+            ("address_family", []),
+            ("kind", {}),
+            ("source_type", []),
+            ("status", {}),
+        ):
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as tmp:
+                document = json.loads(json.dumps(example))
+                document["entries"][0][field] = value
+                path = Path(tmp) / "registry.json"
+                path.write_text(json.dumps(document), encoding="utf-8")
+
+                result = _run_cli(["validate-registry", str(path)])
+
+                self.assertEqual(result.exit_code, 1)
+                self.assertEqual(result.stdout, "")
+                self.assertNotIn("Traceback", result.stderr)
+                self.assertEqual(json.loads(result.stderr)["status"], "error")
+                self.assertIn(f"entries[0].{field}", json.loads(result.stderr)["error"])
+
     def test_validate_registry_reports_schema_error_as_json(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             invalid_registry = Path(tmp) / "registry.json"
