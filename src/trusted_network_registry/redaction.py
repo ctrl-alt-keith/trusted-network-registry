@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ipaddress
 import json
 import re
 from typing import Any
@@ -34,6 +35,23 @@ FORBIDDEN_TEXT_FIELD_RE = re.compile(
     + r")[\"']?\s*[:=]",
     re.MULTILINE,
 )
+IPV4_LITERAL_RE = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}(?:/\d{1,2})?\b")
+# RFC 5737 reserves these three IPv4 blocks for documentation.
+DOCUMENTATION_IPV4_NETWORKS = tuple(
+    ipaddress.IPv4Network(value)
+    for value in ("192.0.2.0/24", "198.51.100.0/24", "203.0.113.0/24")
+)
+
+
+def _contains_non_documentation_ipv4(text: str) -> bool:
+    for match in IPV4_LITERAL_RE.finditer(text):
+        try:
+            network = ipaddress.IPv4Network(match.group(0), strict=False)
+        except ValueError:
+            continue
+        if not any(network.subnet_of(documentation) for documentation in DOCUMENTATION_IPV4_NETWORKS):
+            return True
+    return False
 
 
 def assert_public_safe_document(document: Any) -> None:
@@ -54,6 +72,8 @@ def assert_public_safe_text(text: str, *, label: str = "text") -> None:
     for pattern in FORBIDDEN_VALUE_PATTERNS:
         if pattern.search(text):
             problems.append(f"{label} contains unsafe-looking value")
+    if _contains_non_documentation_ipv4(text):
+        problems.append(f"{label} contains IPv4 outside documentation ranges")
     if problems:
         raise PublicSafetyError("; ".join(problems))
 
@@ -71,3 +91,5 @@ def _walk(value: Any, path: str, problems: list[str]) -> None:
         for pattern in FORBIDDEN_VALUE_PATTERNS:
             if pattern.search(value):
                 problems.append(f"{path} contains unsafe-looking value")
+        if _contains_non_documentation_ipv4(value):
+            problems.append(f"{path} contains IPv4 outside documentation ranges")
