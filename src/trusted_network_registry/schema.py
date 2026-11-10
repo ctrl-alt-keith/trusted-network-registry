@@ -93,13 +93,16 @@ def validate_registry_document(document: dict[str, Any]) -> None:
         if entry["cidr"] != network.with_prefixlen:
             raise SchemaError(f"entries[{index}].cidr must be canonical")
         expected_family = "ipv4" if network.version == 4 else "ipv6"
-        if entry["address_family"] not in ADDRESS_FAMILIES:
+        if (
+            not isinstance(entry["address_family"], str)
+            or entry["address_family"] not in ADDRESS_FAMILIES
+        ):
             raise SchemaError(f"entries[{index}].address_family is not supported")
         if entry["address_family"] != expected_family:
             raise SchemaError(f"entries[{index}].address_family does not match cidr")
 
         kind = entry["kind"]
-        if kind not in ENTRY_KINDS:
+        if not isinstance(kind, str) or kind not in ENTRY_KINDS:
             raise SchemaError(f"entries[{index}].kind must be static or discovered")
         if kind == "static":
             static_count += 1
@@ -120,7 +123,10 @@ def validate_registry_document(document: dict[str, Any]) -> None:
                     f"entries[{index}].expires_at must be after observed_at"
                 )
 
-        if entry["source_type"] not in SOURCE_TYPES:
+        if (
+            not isinstance(entry["source_type"], str)
+            or entry["source_type"] not in SOURCE_TYPES
+        ):
             raise SchemaError(f"entries[{index}].source_type is not supported")
         if kind == "static" and entry["source_type"] != "config":
             raise SchemaError(
@@ -132,7 +138,7 @@ def validate_registry_document(document: dict[str, Any]) -> None:
                 "for discovered entries"
             )
         _non_empty_string(entry["source_ref"], f"entries[{index}].source_ref")
-        if entry["status"] not in ENTRY_STATUSES:
+        if not isinstance(entry["status"], str) or entry["status"] not in ENTRY_STATUSES:
             raise SchemaError(f"entries[{index}].status must be active or inactive")
 
     summary = document["summary"]
