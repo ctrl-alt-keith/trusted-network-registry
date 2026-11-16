@@ -79,9 +79,12 @@ class PublicSafetyTests(unittest.TestCase):
         with self.assertRaises(PublicSafetyError):
             assert_public_safe_document({"endpoint_url": "https://example.com.invalid/path"})
 
-    def test_example_url_allowlist_keeps_literal_hosts_with_ports(self) -> None:
+    def test_example_url_allowlist_keeps_literal_hosts(self) -> None:
+        assert_public_safe_text('endpoint_url = "https://example.com"\n')
         assert_public_safe_text('endpoint_url = "https://example.com:8443/path"')
         assert_public_safe_text('endpoint_url = "http://localhost:8000/path"')
+        assert_public_safe_text("URL=http://localhost:8000\nNEXT=1\n")
+        assert_public_safe_document({"endpoint_url": "https://example.com"})
 
 if __name__ == "__main__":
     unittest.main()

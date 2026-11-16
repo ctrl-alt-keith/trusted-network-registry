@@ -28,7 +28,7 @@ FORBIDDEN_VALUE_PATTERNS = [
     re.compile(r"\bQ[A-Z0-9]{3}-[A-Z0-9]{4}-[A-Z0-9]{4}\b"),
     re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b"),
     re.compile(
-        r"https?://(?!(?:example\.com|localhost)(?::[0-9]+)?(?=[/?#]|$))[^\s\"']+",
+        r"https?://(?!(?:example\.com|localhost)(?::[0-9]+)?(?=[/?#\s\"']|$))[^\s\"']+",
         re.IGNORECASE,
     ),
 ]
