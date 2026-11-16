@@ -65,5 +65,26 @@ class PublicSafetyTests(unittest.TestCase):
                 label="operator config",
             )
 
+    def test_example_url_allowlist_rejects_lookalike_authorities(self) -> None:
+        for url in (
+            "https://example.com.invalid/path",
+            "https://localhost.invalid/path",
+            "https://example.com@not-allowed/path",
+            "https://example.com:8443@not-allowed/path",
+            "HTTPS://example.com.invalid/path",
+        ):
+            with self.subTest(url=url), self.assertRaises(PublicSafetyError):
+                assert_public_safe_text(f'endpoint_url = "{url}"')
+
+        with self.assertRaises(PublicSafetyError):
+            assert_public_safe_document({"endpoint_url": "https://example.com.invalid/path"})
+
+    def test_example_url_allowlist_keeps_literal_hosts(self) -> None:
+        assert_public_safe_text('endpoint_url = "https://example.com"\n')
+        assert_public_safe_text('endpoint_url = "https://example.com:8443/path"')
+        assert_public_safe_text('endpoint_url = "http://localhost:8000/path"')
+        assert_public_safe_text("URL=http://localhost:8000\nNEXT=1\n")
+        assert_public_safe_document({"endpoint_url": "https://example.com"})
+
 if __name__ == "__main__":
     unittest.main()

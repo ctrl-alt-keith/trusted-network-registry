@@ -8,6 +8,8 @@ IPv4 and IPv6 payloads should be private by default.
 
 - Examples use only documentation IP ranges, including `2001:db8::/32` for
   IPv6.
+- Example URLs may use only the literal hosts `example.com` or `localhost`;
+  look-alike suffixes and userinfo do not qualify.
 - Do not commit real home IPs, provider identifiers, private URLs, internal
   DNS names, device labels, bucket names, or secrets.
 - Keep Meraki source references generic and operator-controlled. Registry
