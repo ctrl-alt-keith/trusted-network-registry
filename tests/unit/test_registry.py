@@ -52,6 +52,26 @@ class RegistryTests(unittest.TestCase):
         document = json.loads((ROOT / "examples/registry.example.json").read_text())
         validate_registry_document(document)
 
+    def test_registry_rejects_boolean_version_and_counts(self) -> None:
+        document = json.loads((ROOT / "examples/registry.example.json").read_text())
+        document["schema_version"] = True
+        with self.assertRaisesRegex(SchemaError, "schema_version must be 1"):
+            validate_registry_document(document)
+
+        document["schema_version"] = 1
+        document["entries"] = []
+        document["summary"] = {
+            "entry_count": 0,
+            "static_count": 0,
+            "discovered_count": 0,
+        }
+        for key in document["summary"]:
+            with self.subTest(key=key):
+                document["summary"][key] = False
+                with self.assertRaisesRegex(SchemaError, f"summary.{key} must be 0"):
+                    validate_registry_document(document)
+                document["summary"][key] = 0
+
     def test_registry_validation_accepts_ipv6_entries(self) -> None:
         document = json.loads((ROOT / "examples/registry.example.json").read_text())
         ipv6_entries = [
