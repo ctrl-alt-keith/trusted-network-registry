@@ -60,7 +60,7 @@ def validate_registry_document(document: dict[str, Any]) -> None:
     if not isinstance(document, dict):
         raise SchemaError("registry document must be an object")
     _require(document, REGISTRY_REQUIRED, "registry document")
-    if document["schema_version"] != 1:
+    if type(document["schema_version"]) is not int or document["schema_version"] != 1:
         raise SchemaError("schema_version must be 1")
 
     meta = document["registry"]
@@ -150,7 +150,7 @@ def validate_registry_document(document: dict[str, Any]) -> None:
         "discovered_count": discovered_count,
     }
     for key, value in expected.items():
-        if summary.get(key) != value:
+        if isinstance(summary.get(key), bool) or summary.get(key) != value:
             raise SchemaError(f"summary.{key} must be {value}")
 
 
