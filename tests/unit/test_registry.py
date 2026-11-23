@@ -72,6 +72,28 @@ class RegistryTests(unittest.TestCase):
                     validate_registry_document(document)
                 document["summary"][key] = 0
 
+    def test_registry_accepts_integral_float_counts(self) -> None:
+        document = json.loads((ROOT / "examples/registry.example.json").read_text())
+        for key, value in document["summary"].items():
+            with self.subTest(key=key):
+                document["summary"][key] = float(value)
+                validate_registry_document(document)
+                document["summary"][key] = value
+
+        document["entries"] = []
+        document["summary"] = {
+            "entry_count": 0.0,
+            "static_count": 0.0,
+            "discovered_count": 0.0,
+        }
+        validate_registry_document(document)
+
+    def test_registry_rejects_integral_float_version(self) -> None:
+        document = json.loads((ROOT / "examples/registry.example.json").read_text())
+        document["schema_version"] = 1.0
+        with self.assertRaisesRegex(SchemaError, "schema_version must be 1"):
+            validate_registry_document(document)
+
     def test_registry_validation_accepts_ipv6_entries(self) -> None:
         document = json.loads((ROOT / "examples/registry.example.json").read_text())
         ipv6_entries = [

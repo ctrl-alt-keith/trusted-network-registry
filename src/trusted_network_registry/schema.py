@@ -150,7 +150,7 @@ def validate_registry_document(document: dict[str, Any]) -> None:
         "discovered_count": discovered_count,
     }
     for key, value in expected.items():
-        if type(summary.get(key)) is not int or summary[key] != value:
+        if isinstance(summary.get(key), bool) or summary.get(key) != value:
             raise SchemaError(f"summary.{key} must be {value}")
 
 
