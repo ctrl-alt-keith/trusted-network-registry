@@ -9,6 +9,3 @@ permissions:
 jobs:
   authoritative-source-check:
     uses: ctrl-alt-keith/ai-workflow-playbook/.github/workflows/authoritative-source-check.yml@main
-    with:
-      scan_mode: changed
-      official_domains: developer.hashicorp.com,registry.terraform.io
